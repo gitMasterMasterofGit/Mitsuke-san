@@ -19,8 +19,8 @@ def add_note(deck_name, model_name, content): # content is a placeholder for all
                     'Word': content[0],
                     'PrimaryDefinition': content[1],
                     'Sentence': content[2],
-                    'Picture': content[3],
-                    'SentenceAudio': content[4]
+                    'Picture': f"<img src=\"{content[3]}\">",
+                    'SentenceAudio': f"[sound:{content[4]}]"
                 },
                 'tags': [],
                 'options': {
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     deck_name = 'test'
     model_name = 'JP Mining Note'
     content = ["酷しい", "severe; strict; rigid; unsparing; relentless hard (to do); difficult; tricky intense (e.g. cold); harsh (weather); inclement", 
-          "彼は厳しい批判にさらされた。 He was subjected to severe criticism.", "[prac.png]", 
-          "[sound:Erai-raws_Oshi_no_Ko_2_486107_MLNfSlqX.mp3]"]
+          "彼は厳しい批判にさらされた。 He was subjected to severe criticism.", "FFF_Amagami_SS_Plus_-__1360570_NMFneQjj.jpeg", 
+          "Erai-raws_Oshi_no_Ko_2_486107_MLNfSlqX.mp3"]
 
     add_note(deck_name, model_name, content)
