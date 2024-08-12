@@ -30,36 +30,26 @@ def record_audio():
             print(f"Recording to file: out_{audio_file_index}.wav")
 
 def silence_check(data): # could possibly be combined with smaller snapshots of the audio to make detection faster
-    silence_count = 0
+    # silence_count = 0
     check_len = SAMPLE_RATE*SILENCE_CUT_THRESH
     while check_len > len(data) - check_len: # prevents check_len from being longer than the data
         check_len /= 2
         check_len = int(check_len)
         
     check_start = data[0:check_len].all() == numpy.zeros_like(data[0:check_len]).all()
-    # print("Start check:")
-    # print(data[0:check_len])
     if check_start:
-        silence_count += 1
+        return True
 
     check_mid_idx = random.randint(check_len, int(len(data) - check_len)) # randomly picks a middle portion of audio to check
     check_mid = data[check_mid_idx:check_mid_idx + check_len].all() == numpy.zeros_like(data[0:check_len]).all()
-    # print("Mid check:")
-    # print(data[check_mid_idx:check_mid_idx + check_len])
     if check_mid:
-        silence_count += 1
-    if silence_count >= 2: #check to see if we can end early
         return True
 
     check_end_idx = int(len(data) - check_len)
     check_end = data[check_end_idx:check_end_idx + check_len].all() == numpy.zeros_like(data[0:check_len]).all()
-    # print("End check:")
-    # print(data[check_end_idx:check_end_idx + check_len])
     if check_end:
-        silence_count += 1
-
-    if silence_count >= 2:
         return True
+    
     return False
 
 
@@ -69,22 +59,29 @@ def transcribe_audio():
     current_max_file_index = 0
     i = 0
     print("Beginning transcription")
-    f = open("TranscriptionData/data.json", "w")
+    f = open("TranscriptionData/segments.json", "w", encoding="utf-8")
+    t = open("TranscriptionData/text.txt", "wb")
     while i <= current_max_file_index:
         try:
             print(f"Transcrbing: out_{i}.wav")
             transcription = model.transcribe(get_audio_file_name(i))
-            json.dump(transcription["segments"], f, ensure_ascii=False, indent=4)
-            print(transcription["text"])
+            transcription_save = threading.Thread(target=save_transcription, args=(f, t, transcription))
+            transcription_save.start()
+            
             i += 1
-            current_max_file_index = audio_file_index
-            print(f"CUR MAX: {current_max_file_index}")
+            current_max_file_index = 5#audio_file_index
         except RuntimeError:
             print("File not found")
             time.sleep(5)
 
     f.close()
+    t.close()
     transcription_finished = True
+
+def save_transcription(f, t, transcription):
+    json.dump(transcription["segments"], f, ensure_ascii=False, indent=4)
+    t.write(transcription["text"].encode(errors='ignore'))
+    print("Saved")
 
 # MAIN---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -107,8 +104,8 @@ transcription_finished = False
 
 # try except loop allows KeyboardInterrupt to kill the program
 try:
-    rec_thread.start()
-    time.sleep(float(SEGMENT_DURATION + READ_BUFFER))
+    # rec_thread.start()
+    # time.sleep(float(SEGMENT_DURATION + READ_BUFFER))
     trans_thread.start()
     while True and not transcription_finished: # ensures program runs until user kills it or transcription is completed
         time.sleep(10)

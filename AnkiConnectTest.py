@@ -47,6 +47,7 @@ def add_note(deck_name, model_name, content): # content is a placeholder for all
 if __name__ == '__main__':
     deck_name = 'test'
     model_name = 'JP Mining Note'
+    # word, definition, sentence, picture, audio
     content = ["酷しい", "severe; strict; rigid; unsparing; relentless hard (to do); difficult; tricky intense (e.g. cold); harsh (weather); inclement", 
           "彼は厳しい批判にさらされた。 He was subjected to severe criticism.", "FFF_Amagami_SS_Plus_-__1360570_NMFneQjj.jpeg", 
           "Erai-raws_Oshi_no_Ko_2_486107_MLNfSlqX.mp3"]
