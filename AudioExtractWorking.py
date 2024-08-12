@@ -8,7 +8,7 @@ import os
 SAVE_DIRECTORY = "AudioFiles"
 audio_file_index = 0  
 SAMPLE_RATE = 48000              
-SEGMENT_DURATION = 30 # seconds   
+SEGMENT_DURATION = 1 # seconds   
 
 def get_audio_file_name():
     return os.path.join(SAVE_DIRECTORY, f'out_{audio_file_index}.wav')
