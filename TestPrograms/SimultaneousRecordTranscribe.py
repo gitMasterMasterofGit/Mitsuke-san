@@ -104,8 +104,8 @@ transcription_finished = False
 
 # try except loop allows KeyboardInterrupt to kill the program
 try:
-    # rec_thread.start()
-    # time.sleep(float(SEGMENT_DURATION + READ_BUFFER))
+    rec_thread.start()
+    time.sleep(float(SEGMENT_DURATION + READ_BUFFER))
     trans_thread.start()
     while True and not transcription_finished: # ensures program runs until user kills it or transcription is completed
         time.sleep(10)

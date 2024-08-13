@@ -1,6 +1,27 @@
 text = "後ろ!着く服は他をお土産とは言えないそんなね、中の生クリームが絶近なのよ生徒の前なんでね助けさせてもらうよ恐ろしく早い… 血の穴…まったく… いつの時代でも厭介なものだな復讐しよう!だからどうという話でもないか?7…8…9…そろそろかなくそ、まただのっとれないこのいたどりとかいう構造…一体…何者だ?おっ、大丈夫だった?驚いた、本当に制御できてるよでもちょっとうるせんだよな、あいつの声がする"
 t = "後ろ!着く服は他をお土産とは言えないそんなね"
 
+particles = [
+    'は',  # wa (topic marker)
+    'が',  # ga (subject marker)
+    'の',  # no (possessive or descriptive)
+    'に',  # ni (direction, target)
+    'で',  # de (location, means)
+    'へ',  # e (direction)
+    'と',  # to (and, with)
+    'も',  # mo (also)
+    'や',  # ya (and, listing)
+    'と',  # to (quotation, condition)
+    'で',  # de (means, method)
+    'ば',  # ba (if, conditional)
+    'の',  # no (nominalizer)
+    'ね',  # ne (seeking confirmation)
+    'よ',  # yo (assertion, emphasis)
+    'か',  # ka (question marker)
+    'も',  # mo (also, too)
+]
+
+
 import json
 from pprint import pprint
 import MeCab
@@ -25,7 +46,7 @@ def jmdict_lookup(target, find_by_reading=False, first_find=True):
             idx = 0
             for term in data:
                 idx += 1
-                if (term[0] == target and not find_by_reading) or (term[1] == target and find_by_reading):
+                if ((term[0] == target and not find_by_reading) or (term[1] == target and find_by_reading)) and term[0] not in particles:
                     reading = term[1]
                     found = True
                     for element in term:
@@ -45,11 +66,16 @@ def jmdict_lookup(target, find_by_reading=False, first_find=True):
 
 def definition_string_clean(string):
     clean = ""
-    for char in string:
-        if char not in ["[", "]", "\'",  ",", " "]:
+    for i in range(1, len(string)):
+        char = string[i]
+        if char not in ["[", "]", "\'",  ","]:
             clean += char
         elif char == ",":
-            clean += "\n"
+            clean += "; "
+            try:
+                i += 2
+            except IndexError:
+                print("")
     return clean
 
                     
@@ -74,4 +100,4 @@ def parse_text(text): # frequency checks may not be neccessary due to the mecab 
             found_words.append(dict_entry)
     return found_words
 
-pprint(parse_text(t))
+pprint(jmdict_lookup("完"))
