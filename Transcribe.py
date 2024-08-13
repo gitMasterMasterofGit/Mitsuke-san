@@ -18,8 +18,6 @@ class Transcriber:
         self.READ_BUFFER = read_buffer
         self.finished = False
         self.transcription = None
-        self.transcription_idx = 0
-        self.has_new = False
         print("Loading model...")
         self.model = whisper.load_model(model_type)
 
@@ -30,29 +28,22 @@ class Transcriber:
         self.has_new = False
         return self.transcription
 
-    async def transcribe_audio(self):
-        current_max_file_index = 0
-        i = 0
-        print("Beginning transcription")
-        while i <= current_max_file_index:
-            try:
-                print(f"Transcrbing: out_{i}.wav")
-                self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(i))
-                self.has_new = True
+    async def transcribe_audio(self, idx):
+        try:
+            print(f"Transcrbing: out_{idx}.wav")
+            self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(idx))
+            self.has_new = True
 
-                print(f"Saving transcription: {self.transcription_idx}")
-                f = open(self.get_transcription_file_name(self.transcription_idx)["json"], "w", encoding="utf-8")
-                t = open(self.get_transcription_file_name(self.transcription_idx)["txt"], "wb")
-                save_transcription(f, t, self.transcription)
+            print(f"Saving transcription: {idx}")
+            f = open(self.get_transcription_file_name(idx)["json"], "w", encoding="utf-8")
+            t = open(self.get_transcription_file_name(idx)["txt"], "wb")
+            save_transcription(f, t, self.transcription)
                 
-                i += 1
-                self.transcription_idx += 1
-                current_max_file_index = 8#self.recorder.audio_file_index
+            f.close()
+            t.close()
 
-            except RuntimeError:
-                print("File not found")
-                time.sleep(5)
+            return self.transcription
 
-        f.close()
-        t.close()
-        self.finished = True
+        except RuntimeError:
+            print("File not found")
+            time.sleep(5)
