@@ -1,6 +1,7 @@
 import requests
 import json
 import MeCab
+from janome.tokenizer import Tokenizer
 
 # Define the AnkiConnect endpoint
 ANKI_CONNECT_URL = 'http://localhost:8765'
@@ -28,6 +29,8 @@ particles = [
     'も',  # mo (also, too)
 ]
 
+parses = []
+
 def definition_string_clean(string):
     clean = ""
     for i in range(1, len(string)):
@@ -35,7 +38,7 @@ def definition_string_clean(string):
         if char not in ["[", "]", "\'",  ","]:
             clean += char
         elif char == ",":
-            clean += "; "
+            clean += "| "
             try:
                 i += 2
             except IndexError:
@@ -86,9 +89,51 @@ def jmdict_lookup(target, find_by_reading=False, first_find=True):
         return all_instances
     else:
         return {"found": False}
+    
+def parse_initial(text):
+    # Initialize Janome Tokenizer
+    tokenizer = Tokenizer()
+    
+    # Initialize lists to hold parts of speech
+    adjectives = []
+    nouns = []
+    verbs = []
+
+    result = tokenizer.tokenize(text)
+
+    # Tokenize and analyze each token
+    for token in result:
+        # Extracting the features from each token
+        surface = token.surface
+        part_of_speech = token.part_of_speech.split(',')[0]
+        base_form = token.base_form
+
+        # Categorizing the token based on its part of speech
+        if part_of_speech == '名詞':
+            nouns.append(surface)
+        elif part_of_speech == '形容詞':
+            adjectives.append(base_form)
+        elif part_of_speech == '動詞':
+            verbs.append(base_form)
+    
+    return {
+        'adjectives': adjectives,
+        'nouns': nouns,
+        'verbs': verbs
+    }
+
+def combine_results(result):
+    list = []
+    for a in result["adjectives"]:
+        list.append(a)
+    for n in result["nouns"]:
+        list.append(n)
+    for v in result["verbs"]:
+        list.append(v)
+    return list
 
 # Define the request to add a new note
-def add_note(deck_name, model_name, content): # content is a placeholder for all necessary card info
+def add_note(deck_name, model_name, content, sentence): # content is a placeholder for all necessary card info
     # Create the payload
     payload = {
         'action': 'addNote',
@@ -101,7 +146,7 @@ def add_note(deck_name, model_name, content): # content is a placeholder for all
                     'Key': content["word"],
                     'Word': content["word"],
                     'PrimaryDefinition': content["definition"],
-                    # 'Sentence': "PLACEHOLDER",
+                    'Sentence': sentence,
                     # 'Picture': f"<img src=\"{"PLACEHOLDER"}\">",
                     # 'SentenceAudio': f"[sound:{"PLACEHOLDER"}]"
                 },
@@ -127,9 +172,11 @@ def add_note(deck_name, model_name, content): # content is a placeholder for all
         print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
 
 class Parser:
-    def __init__(self) -> None:
+    def __init__(self):
         self.found_words = []
         self.finding_words = False
+        self.times = []
+        self.words_to_sentences = []
 
     def parse_text(self, text): # frequency checks may not be neccessary due to the mecab parser
         self.finding_words = True
@@ -138,12 +185,31 @@ class Parser:
         for token in parsed_text:
             if token not in excluded_chars and token not in particles:
                 print("Looking for: " + token)
-                dict_entry = jmdict_lookup(token)
+                dict_entry = jmdict_lookup(token, first_find=True)
                 if dict_entry["found"] == True:
                     print("Found: " + token)
                     self.found_words.append(dict_entry)
                     
         return self.found_words
+    
+    def parse(self, text):
+        for word in combine_results(parse_initial(text)):
+            dict_entry = jmdict_lookup(word, first_find=True)
+            if dict_entry["found"] == True:
+                    print("Found: " + word)
+                    self.found_words.append(dict_entry)
+        
+        return self.found_words
+    
+    def get_times(self, transcription):
+        for segment in transcription: # transcription["segments"]
+            self.times.append([segment["text"], (segment["start"], segment["end"])])
+
+    def find_sentence(self, word):
+        for i in range(len(self.times)):
+            text_tokens = combine_results(parse_initial(self.times[i][0]))
+            if word["word"] in text_tokens:
+                return self.times[i][0] # sentence the word came from
 
 class CardCreator:
     def __init__(self, deck_name, model_name):
@@ -151,7 +217,7 @@ class CardCreator:
         self.model_name = model_name
         self.finished = False
 
-    def create_cards_from_parse(self, parse_result):
+    def create_cards_from_parse(self, parse_result, parser):
         for word in parse_result:
-            add_note(self.deck_name, self.model_name, word)
+            add_note(self.deck_name, self.model_name, word, parser.find_sentence(word))
         self.finished = True

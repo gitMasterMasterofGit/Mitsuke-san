@@ -38,6 +38,7 @@ class Recorder:
         self.SEGMENT_DURATION = segment_duration
         self.SILENCE_CUT_THRESH = silence_thresh
         self.audio_file_index = 0
+        self.stopped = False
 
     def get_audio_file_name(self, idx):
         return os.path.join(self.SAVE_DIRECTORY, f'out_{idx}.wav')
@@ -51,6 +52,7 @@ class Recorder:
                 if silence_check(self, data): #checks for silent audio
                     print("No audio detected, stopping recording")
                     self.audio_file_index -= 1 # prevents model from trying to read non-existent files
+                    self.stopped = True
                     break
 
                 sf.write(file=self.get_audio_file_name(self.audio_file_index), data=data[:, 0], samplerate=self.SAMPLE_RATE)

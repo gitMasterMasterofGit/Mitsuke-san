@@ -47,3 +47,23 @@ class Transcriber:
         except RuntimeError:
             print("File not found")
             time.sleep(5)
+
+    async def debug_transcribe_audio(self, name):
+        try:
+            print(f"Transcrbing: {name}")
+            self.transcription = self.model.transcribe(name)
+            self.has_new = True
+
+            print(f"Saving transcription: {name}")
+            f = open(self.get_transcription_file_name("debug")["json"], "w", encoding="utf-8")
+            t = open(self.get_transcription_file_name("debug")["txt"], "wb")
+            save_transcription(f, t, self.transcription)
+                
+            f.close()
+            t.close()
+
+            return self.transcription
+
+        except RuntimeError:
+            print("File not found")
+            time.sleep(5)

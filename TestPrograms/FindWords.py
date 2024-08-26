@@ -99,5 +99,3 @@ def parse_text(text): # frequency checks may not be neccessary due to the mecab 
             print("Found: " + token)
             found_words.append(dict_entry)
     return found_words
-
-pprint(jmdict_lookup("完"))
