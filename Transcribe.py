@@ -1,9 +1,7 @@
 import whisper
-import threading
 import json
 import os
 import time
-import asyncio
 
 def save_transcription(f, t, transcription):
     json.dump(transcription["segments"], f, ensure_ascii=False, indent=4)
@@ -27,6 +25,17 @@ class Transcriber:
     def retrieve_transcription(self):
         self.has_new = False
         return self.transcription
+    
+    def clear_transcription_data(self):
+        index = 0
+        while os.path.exists(os.path.join(dir, f'{self.name}_{index}_segments.{"json"}')):
+            os.remove(os.path.join(dir, f'{self.name}_{index}_segments.{"json"}'))
+            index += 1
+        
+        index = 0
+        while os.path.exists(os.path.join(dir, f'{self.name}_{index}_text.{"txt"}')):
+            os.remove(os.path.join(dir, f'{self.name}_{index}_text.{"tzt"}'))
+            index += 1
 
     async def transcribe_audio(self, idx):
         try:

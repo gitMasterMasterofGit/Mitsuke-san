@@ -113,8 +113,8 @@ class ImageCapture:
         self.im_count += 1
         time.sleep(0.1)
 
-    def record_screen(self):
-        while True and not self.cancelled:
+    def record_screen(self, audio_recorder):
+        while True and not self.cancelled and not audio_recorder.stopped:
             # Record screen
             sct_img = self.sct.grab(self.bounding_box)
             # self.img_cache.append(sct_img)
@@ -126,5 +126,8 @@ class ImageCapture:
                 cv2.destroyAllWindows()
                 break
 
+        print("Stopping screen recording")
+
     def image_clear(self):
-        fc.clear("Images", "img", "jpg")
+        #fc.clear("Images", "img", "jpg")
+        pass

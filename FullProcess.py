@@ -3,11 +3,12 @@ from Transcribe import Transcriber
 from Cards import Parser
 from Cards import CardCreator
 from ScreenRecord import ImageCapture
+from DataClear import FileClear
 import threading
 import time
 import asyncio
 
-aud_rec = Recorder(segment_duration=10, silence_thresh=6)
+aud_rec = Recorder(silence_thresh=6)
 trans = Transcriber(aud_rec)
 parser = Parser()
 screen_rec = ImageCapture(capture_interval=15)
@@ -28,31 +29,33 @@ async def main():
             time.sleep(5)
 
         rec_thread.start()
-        screen_rec.record_screen()
+        screen_rec.record_screen(aud_rec)
         time.sleep(float(aud_rec.SEGMENT_DURATION + trans.READ_BUFFER))
 
         while True:
-            if aud_rec.stopped:
-                screen_rec.cancelled = True
-                print("Stopping screen recording")
 
             if not trans.finished: # ensures program runs until user kills it or transcription is complete
                 transcription = await trans.transcribe_audio(transcription_idx)
                 print("Finding words...")
                             
-                found_words = parser.parse_text(transcription["text"])
-                parser.get_times(transcription["segments"])
-                card_creator.create_cards_from_parse(found_words, parser)
+                found_words = parser.parse(transcription["text"])
+                parser.get_times(transcription["segments"], transcription_idx)
+                card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
 
                 if not transcription_idx > aud_rec.audio_file_index:
                     transcription_idx += 1
                 else:
                     trans.finished = True
             else:
+                FileClear.clear("Images", "img", "jpg")
+                FileClear.clear("AudioFiles", "out", "wav")
+                trans.clear_transcription_data()
                 break # kills program when all processes are done
 
     except (KeyboardInterrupt, SystemExit):
         print("Process ended")
-        screen_rec.image_clear()
+        FileClear.clear("Images", "img", "jpg")
+        FileClear.clear("AudioFiles", "out", "wav")
+        trans.clear_transcription_data()
 
 asyncio.run(main())
