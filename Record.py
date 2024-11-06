@@ -51,7 +51,8 @@ class Recorder:
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
                 if silence_check(self, data): #checks for silent audio
                     print("No audio detected, stopping recording")
-                    self.audio_file_index -= 1 # prevents model from trying to read non-existent files
+                    self.audio_file_index -= 2 # prevents model from trying to read non-existent files
+                    print(f"Index on stop: {self.audio_file_index}")
                     self.stopped = True
                     break
 

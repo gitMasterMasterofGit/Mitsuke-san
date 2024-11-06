@@ -16,7 +16,7 @@ class Transcriber:
         self.READ_BUFFER = read_buffer
         self.finished = False
         self.transcription = None
-        print("Loading model...")
+        print(f"Loading {model_type} model...")
         self.model = whisper.load_model(model_type)
 
     def get_transcription_file_name(self, idx):
@@ -28,30 +28,36 @@ class Transcriber:
     
     def clear_transcription_data(self):
         index = 0
-        while os.path.exists(os.path.join(dir, f'{self.name}_{index}_segments.{"json"}')):
-            os.remove(os.path.join(dir, f'{self.name}_{index}_segments.{"json"}'))
+        dir = "TranscriptionData"
+        while os.path.exists(os.path.join(dir, f'{self.name}_{index}_segments.json')):
+            os.remove(os.path.join(dir, f'{self.name}_{index}_segments.json'))
             index += 1
         
         index = 0
-        while os.path.exists(os.path.join(dir, f'{self.name}_{index}_text.{"txt"}')):
-            os.remove(os.path.join(dir, f'{self.name}_{index}_text.{"tzt"}'))
+        while os.path.exists(os.path.join(dir, f'{self.name}_{index}_text.txt')):
+            os.remove(os.path.join(dir, f'{self.name}_{index}_text.txt'))
             index += 1
 
-    async def transcribe_audio(self, idx):
+    def transcribe_audio(self, idx, save_var, aud_rec):
         try:
-            print(f"Transcrbing: out_{idx}.wav")
-            self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(idx))
-            self.has_new = True
+            while not self.finished:
+                if idx < aud_rec.audio_file_index:
+                    print(f"Transcrbing: out_{idx}.wav")
+                    self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(idx))
+                    self.has_new = True
 
-            print(f"Saving transcription: {idx}")
-            f = open(self.get_transcription_file_name(idx)["json"], "w", encoding="utf-8")
-            t = open(self.get_transcription_file_name(idx)["txt"], "wb")
-            save_transcription(f, t, self.transcription)
-                
-            f.close()
-            t.close()
+                    print(f"Saving transcription: {idx}")
+                    f = open(self.get_transcription_file_name(idx)["json"], "w", encoding="utf-8")
+                    t = open(self.get_transcription_file_name(idx)["txt"], "wb")
+                    save_transcription(f, t, self.transcription)
+                        
+                    f.close()
+                    t.close()
 
-            return self.transcription
+                    save_var.set(self.transcription)
+                    idx += 1
+                else:
+                    self.finished = True
 
         except RuntimeError:
             print("File not found")

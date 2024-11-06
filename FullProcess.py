@@ -6,7 +6,16 @@ from ScreenRecord import ImageCapture
 from DataClear import FileClear
 import threading
 import time
-import asyncio
+
+class Saver:
+    def __init__(self):
+        self.val = None
+
+    def set(self, val):
+        self.val = val
+
+    def get(self):
+        return self.val
 
 aud_rec = Recorder(silence_thresh=6)
 trans = Transcriber(aud_rec)
@@ -18,8 +27,16 @@ transcription_idx = 0
 rec_thread = threading.Thread(target=aud_rec.record_audio)
 rec_thread.daemon = True
 
-async def main():
+screen_thread = threading.Thread(target=screen_rec.record_screen, args=(aud_rec,))
+screen_thread.daemon = True
+
+trans_save = Saver()
+trans_thread = threading.Thread(target=trans.transcribe_audio, args=(transcription_idx, trans_save, aud_rec))
+        
+
+def main():
     global transcription_idx
+
     # try except loop allows KeyboardInterrupt to kill the program
     try:
         screen_rec.start()
@@ -29,23 +46,25 @@ async def main():
             time.sleep(5)
 
         rec_thread.start()
-        screen_rec.record_screen(aud_rec)
+        screen_thread.start()
         time.sleep(float(aud_rec.SEGMENT_DURATION + trans.READ_BUFFER))
+        trans_thread.start()
 
         while True:
 
             if not trans.finished: # ensures program runs until user kills it or transcription is complete
-                transcription = await trans.transcribe_audio(transcription_idx)
-                print("Finding words...")
-                            
-                found_words = parser.parse(transcription["text"])
-                parser.get_times(transcription["segments"], transcription_idx)
-                card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
+                transcription = trans_save.get()
+                if transcription is not None:
+                    print("Finding words...")          
+                    found_words = parser.parse(transcription["text"])
+                    parser.get_times(transcription["segments"], transcription_idx)
+                    card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
+                    trans_save.set(None)
 
-                if not transcription_idx > aud_rec.audio_file_index:
-                    transcription_idx += 1
                 else:
-                    trans.finished = True
+                    print("Nothing to transcribe")
+                    time.sleep(5)
+
             else:
                 FileClear.clear("Images", "img", "jpg")
                 FileClear.clear("AudioFiles", "out", "wav")
@@ -58,4 +77,4 @@ async def main():
         FileClear.clear("AudioFiles", "out", "wav")
         trans.clear_transcription_data()
 
-asyncio.run(main())
+main()

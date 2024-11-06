@@ -32,48 +32,42 @@ particles = [
 
 current_deck_vocab = []
 
+def response_feedback(response):
+    if response.status_code == 200:
+        result = response.json()
+        if result.get('error'):
+            print(f"Error: {result['error']}")
+        else:
+            print(f"Success: {result['result']}")
+    else:
+        print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
+
 def get_current_vocab():
     payload = {
     "action": "findCards",
     "version": 6,
     "params": {
         "query": "deck:test"
-    }
+        }
     }
 
     # Send the request
     response = requests.post(ANKI_CONNECT_URL, data=json.dumps(payload))
     
-    # Check the response
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('error'):
-            print(f"Error: {result['error']}")
-        else:
-            print(f"Queried deck: {result['result']}")
-    else:
-        print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
+    response_feedback(response)
 
     payload = {
     "action": "cardsInfo",
     "version": 6,
     "params": {
         "cards": response["result"]
-    }
+        }
     }
 
     # Send the request
     response = requests.post(ANKI_CONNECT_URL, data=json.dumps(payload))
     
-    # Check the response
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('error'):
-            print(f"Error: {result['error']}")
-        else:
-            print(f"Cards: {result['result']}")
-    else:
-        print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
+    response_feedback(response)
 
     pprint.pprint(response)
 
@@ -104,6 +98,7 @@ def H_freq_lookup(target):
 def jmdict_lookup(target, find_by_reading=False, first_find=True):
     global current_deck_vocab
     if target in current_deck_vocab:
+        print(f"{target} already in deck")
         return {"found": False}
     
     reading = ""
@@ -211,15 +206,7 @@ def add_note(deck_name, model_name, content, sentence, picture, audio): # conten
     # Send the request
     response = requests.post(ANKI_CONNECT_URL, data=json.dumps(payload))
     
-    # Check the response
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('error'):
-            print(f"Error: {result['error']}")
-        else:
-            print(f"Note added successfully. Note ID: {result['result']}")
-    else:
-        print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
+    response_feedback(response)
 
 class Parser:
     def __init__(self):
@@ -262,7 +249,7 @@ class Parser:
 
                 # move image to proper directory
                 try:
-                    shutil.move(SOURCE_PATH + f"img_{img_idx}.jpg", 
+                    shutil.copy(SOURCE_PATH + f"img_{img_idx}.jpg", 
                           DEST_PATH + f"img_{img_idx}_{time_id}.jpg")
                 except FileNotFoundError as e:
                     time.sleep(0.0001)
@@ -271,6 +258,7 @@ class Parser:
             
     def get_audio(self, word):
         DEST_PATH = r"C:/Users/Oorrange/AppData/Roaming/Anki2/User 1/collection.media/"
+        BUFFER = 0.25 # seconds
         for i in range(len(self.times)):
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
@@ -281,8 +269,14 @@ class Parser:
                     data, samplerate = sf.read(f"AudioFiles/out_{self.times[i][2]}.wav")
 
                     # record sentence audio
-                    start = int(self.times[i][1][0] * samplerate)
-                    end = int(self.times[i][1][1] * samplerate)
+                    start = int(self.times[i][1][0] * samplerate) - int(BUFFER * samplerate)
+                    if start < 0:
+                        start = int(self.times[i][1][0] * samplerate)
+            
+                    end = int(self.times[i][1][1] * samplerate) + int(BUFFER * samplerate)
+                    if end > len(data):
+                        end = int(self.times[i][1][1] * samplerate)
+
                     print(f"Start: {start}, End: {end}")
                     aud_out = data[start : end]
 
