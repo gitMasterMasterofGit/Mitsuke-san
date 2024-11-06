@@ -51,8 +51,8 @@ def create_deck(name):
     else:
         print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
 
-inp = input("c to clear, t to create deck: ")
-if inp == "t":
-    create_deck("test")
-else:
-    clear("test")
+def clear_create():
+    if input("c to clear, t to create deck: ") == "t":
+        create_deck("test")
+    else:
+        clear("test")

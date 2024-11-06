@@ -50,14 +50,14 @@ class Recorder:
                 # record audio with loopback from default speaker.
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
                 if silence_check(self, data): #checks for silent audio
-                    print("No audio detected, stopping recording")
-                    self.audio_file_index -= 2 # prevents model from trying to read non-existent files
+                    print("No audio detected, stopping audio recording")
                     print(f"Index on stop: {self.audio_file_index}")
                     self.stopped = True
                     break
 
                 sf.write(file=self.get_audio_file_name(self.audio_file_index), data=data[:, 0], samplerate=self.SAMPLE_RATE)
                 print(f"Saved: out_{self.audio_file_index}.wav")
-                self.audio_file_index += 1
+                if not self.stopped: #prevents transcriber from trying to read non-existent audio files
+                    self.audio_file_index += 1
 
                 print(f"Recording to file: out_{self.audio_file_index}.wav")

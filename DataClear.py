@@ -1,7 +1,10 @@
 import os
 
 class FileClear:
-    def clear(dir, name, file_type, index=None):
+    def clear(dir, name, file_type, index=None, debug=False):
+        if debug: #lets me not clear the files for testing
+            return
+        
         if index != None:
             os.remove(os.path.join(dir, f'{name}_{index}.{file_type}'))
             return
