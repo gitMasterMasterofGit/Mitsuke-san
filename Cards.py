@@ -243,7 +243,7 @@ class Parser:
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
                 debug = word["word"]
-                img_idx = int((self.times[i][2] * aud_rec.SEGMENT_DURATION) / screen_rec.CAPTURE_INTERVAL)
+                img_idx = int((self.times[i][2] * aud_rec.SEGMENT_DURATION) / screen_rec.CAPTURE_INTERVAL) #int((self.times[i][1][2] * aud_rec.SEGMENT_DURATION) / screen_rec.CAPTURE_INTERVAL)
                 print(f"word: {debug}\nimg idx: {img_idx}")
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
 
