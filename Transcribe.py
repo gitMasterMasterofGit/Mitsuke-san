@@ -40,7 +40,7 @@ class Transcriber:
             os.remove(os.path.join(dir, f'{self.name}_{index}_text.txt'))
             index += 1
 
-    def transcribe_audio(self, save_var, aud_rec):
+    def transcribe_audio(self, transcription_queue, aud_rec):
         idx = self.transcription_idx
         try:
             while not self.finished:
@@ -57,7 +57,7 @@ class Transcriber:
                     f.close()
                     t.close()
 
-                    save_var.add(self.transcription)
+                    transcription_queue.add(self.transcription)
                     self.last_finished_idx = idx
                     idx += 1
 
