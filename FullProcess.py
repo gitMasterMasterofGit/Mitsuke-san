@@ -47,7 +47,6 @@ def process_transcription(transcription):
     found_words = parser.parse(transcription["text"])
     parser.get_times(transcription["segments"], trans.last_finished_idx)
     card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
-    trans_save.set(None)
         
 def main():
     # try except loop allows KeyboardInterrupt to kill the program
