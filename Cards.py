@@ -20,14 +20,10 @@ particles = [
     'と',  # to (and, with)
     'も',  # mo (also)
     'や',  # ya (and, listing)
-    'と',  # to (quotation, condition)
-    'で',  # de (means, method)
     'ば',  # ba (if, conditional)
-    'の',  # no (nominalizer)
     'ね',  # ne (seeking confirmation)
     'よ',  # yo (assertion, emphasis)
     'か',  # ka (question marker)
-    'も',  # mo (also, too)
     'ん'   # not a particle, but means essentially nothing on its own
 ]
 
