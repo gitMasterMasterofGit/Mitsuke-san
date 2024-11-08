@@ -7,7 +7,7 @@ from DataClear import FileClear
 import threading
 import time
 
-class Saver: # bascially a queue
+class Queue:
     def __init__(self):
         self.vals = [None for i in range(50)]
         self.set_idx = 0
@@ -39,7 +39,7 @@ rec_thread.daemon = True
 screen_thread = threading.Thread(target=screen_rec.record_screen, args=(aud_rec,))
 screen_thread.daemon = True
 
-trans_save = Saver()
+transcription_queue = Queue()
 trans_thread = threading.Thread(target=trans.transcribe_audio, args=(trans_save, aud_rec))
 
 def process_transcription(transcription):
@@ -66,7 +66,7 @@ def main():
 
             if not trans.finished: # ensures program runs until user kills it or transcription is complete
 
-                transcription = trans_save.get()
+                transcription = transcription_queue.get()
                 if transcription is not None:        
                     process_transcription(transcription)
                 else:
@@ -75,7 +75,7 @@ def main():
             else:
 
                 while not trans_save.fully_retreived():
-                    transcription = trans_save.get()  
+                    transcription = transcription_queue.get()  
                     process_transcription(transcription)
 
                 FileClear.clear("Images", "img", "jpg", debug=True)
