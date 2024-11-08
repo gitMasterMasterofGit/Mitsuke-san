@@ -23,6 +23,7 @@ parser = Parser()
 screen_rec = ImageCapture(capture_interval=1)
 card_creator = CardCreator("test", "JP Mining Note")
 transcription_idx = 0
+parse_idx = 0
 
 rec_thread = threading.Thread(target=aud_rec.record_audio)
 rec_thread.daemon = True
@@ -36,16 +37,11 @@ trans_thread = threading.Thread(target=trans.transcribe_audio, args=(transcripti
 def process_transcription(transcription):
     global transcription_idx
     found_words = parser.parse(transcription["text"])
-    parser.get_times(transcription["segments"], transcription_idx)
+    parser.get_times(transcription["segments"], trans.last_finished_idx)
     card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
-    transcription_idx += 1
     trans_save.set(None)
-    
         
 def main():
-    print(aud_rec.SEGMENT_DURATION)
-    print(screen_rec.CAPTURE_INTERVAL)
-
     # try except loop allows KeyboardInterrupt to kill the program
     try:
         screen_rec.start()
@@ -68,13 +64,16 @@ def main():
                     process_transcription(transcription)
 
                 else:
-                    print("Nothing to transcribe")
-                    time.sleep(5)
+                    if trans.last_finished_idx < aud_rec.audio_file_index:
+                        transcription = trans_save.get()
+                        print("Finding words...")          
+                        process_transcription(transcription)
+                    time.sleep(1)
 
             else:
                 FileClear.clear("Images", "img", "jpg", debug=True)
                 FileClear.clear("AudioFiles", "out", "wav", debug=True)
-                trans.clear_transcription_data()
+                #trans.clear_transcription_data()
                 break # kills program when all processes are done
 
     except (KeyboardInterrupt, SystemExit):

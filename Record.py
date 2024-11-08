@@ -44,10 +44,10 @@ class Recorder:
         return os.path.join(self.SAVE_DIRECTORY, f'out_{idx}.wav')
 
     def record_audio(self):
-        print(f"Recording to file: out_{self.audio_file_index}.wav")
         with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.SAMPLE_RATE) as mic:
             while True:
                 # record audio with loopback from default speaker.
+                print(f"Recording to file: out_{self.audio_file_index}.wav")
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
                 if silence_check(self, data): #checks for silent audio
                     print("No audio detected, stopping audio recording")
@@ -59,5 +59,3 @@ class Recorder:
                 print(f"Saved: out_{self.audio_file_index}.wav")
                 if not self.stopped: #prevents transcriber from trying to read non-existent audio files
                     self.audio_file_index += 1
-
-                print(f"Recording to file: out_{self.audio_file_index}.wav")

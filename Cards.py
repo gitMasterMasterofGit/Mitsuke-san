@@ -2,6 +2,7 @@ import requests
 import json
 import shutil
 import time
+import random
 import soundfile as sf
 from janome.tokenizer import Tokenizer
 import pprint
@@ -226,9 +227,10 @@ class Parser:
         
         return self.found_words
     
-    def get_times(self, transcription, trans_idx):
+    def get_times(self, transcription, file_idx):
         for segment in transcription: # transcription["segments"]
-            self.times.append([segment["text"], (segment["start"], segment["end"]), trans_idx])
+            print([segment["text"], (segment["start"], segment["end"]), file_idx])
+            self.times.append([segment["text"], (segment["start"], segment["end"]), file_idx])
 
     def find_sentence(self, word):
         for i in range(len(self.times)):
@@ -243,7 +245,9 @@ class Parser:
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
                 debug = word["word"]
-                img_idx = int((self.times[i][1][1] * aud_rec.SEGMENT_DURATION) / screen_rec.CAPTURE_INTERVAL)
+                img_idx = int((self.times[i][2] * aud_rec.SEGMENT_DURATION) + 
+                                random.uniform(self.times[i][1][0], self.times[i][1][1]) / # takes random part from sentence to source image from
+                                screen_rec.CAPTURE_INTERVAL)
                 print(f"word: {debug}\nimg idx: {img_idx}")
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
 
@@ -263,7 +267,7 @@ class Parser:
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
-                print(f"{self.times[i][1][0]}, {self.times[i][1][1]}")
+                print(f"{self.times[i][1][0]}s to {self.times[i][1][1]}s, from file {self.times[i][2]}")
                 try:
                     # record from temp audio file
                     data, samplerate = sf.read(f"AudioFiles/out_{self.times[i][2]}.wav")

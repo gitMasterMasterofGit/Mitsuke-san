@@ -1,4 +1,4 @@
-import whisper
+import whisper_timestamped as whisper
 import json
 import os
 import time
@@ -16,6 +16,7 @@ class Transcriber:
         self.READ_BUFFER = read_buffer
         self.finished = False
         self.transcription = None
+        self.last_finished_idx = 0
         print(f"Loading {model_type} model...")
         self.model = whisper.load_model(model_type)
 
@@ -41,9 +42,9 @@ class Transcriber:
     def transcribe_audio(self, idx, save_var, aud_rec):
         try:
             while not self.finished:
-                if idx < aud_rec.audio_file_index:
+                if idx < aud_rec.audio_file_index or not aud_rec.stopped:
                     print(f"Transcrbing: out_{idx}.wav")
-                    self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(idx))
+                    self.transcription = whisper.transcribe(self.model, self.recorder.get_audio_file_name(idx), "Japanese")
                     self.has_new = True
 
                     print(f"Saving transcription: {idx}")
@@ -55,9 +56,14 @@ class Transcriber:
                     t.close()
 
                     save_var.set(self.transcription)
+                    self.last_finished_idx = idx
                     idx += 1
+
                 else:
                     self.finished = True
+                    print(f"Transcription index on stop {idx}")
+
+                print(f"Transcription on index {idx}")
 
         except RuntimeError:
             print("File not found")

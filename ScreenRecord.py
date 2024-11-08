@@ -17,16 +17,20 @@ class ImageCapture:
     def mouse_callback(self, event, x, y, flags, param):
         global rect_start, rect_end, drawing, start_img, temp_image
 
+        if event == None and drawing:
+            # Clear the temporary image and draw the updated rectangle
+            temp_image = start_img.copy()
+            cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
+            cv2.imshow("Draw Rectangle", temp_image)
+
         if event == cv2.EVENT_LBUTTONDOWN:
             # When left mouse button is pressed, set the start point
             rect_start = (x, y)
             drawing = True
-            if drawing:
-                rect_end = (x, y)
-                # Clear the temporary image and draw the updated rectangle
-                temp_image = start_img.copy()
-                cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
-                cv2.imshow("Draw Rectangle", temp_image)
+            # Clear the temporary image and draw the updated rectangle
+            temp_image = start_img.copy()
+            cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
+            cv2.imshow("Draw Rectangle", temp_image)
         elif event == cv2.EVENT_MOUSEMOVE:
             # Update the end point while dragging
             if drawing:
@@ -36,20 +40,9 @@ class ImageCapture:
                 cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
                 cv2.imshow("Draw Rectangle", temp_image)
         elif event == cv2.EVENT_LBUTTONUP:
-            # When left mouse button is released, finalize the rectangle
-            rect_end = (x, y)
             drawing = False
-            # Draw the final rectangle on the image
-            cv2.rectangle(start_img, rect_start, rect_end, (0, 255, 0), 2)
-            cv2.imshow("Draw Rectangle", start_img)
             # Save the rectangle's dimensions
             self.bounding_box = self.save_rectangle_dimensions()
-        else:
-            if drawing:
-                # Clear the temporary image and draw the updated rectangle
-                temp_image = start_img.copy()
-                cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
-                cv2.imshow("Draw Rectangle", temp_image)
 
     def save_rectangle_dimensions(self):
         global rect_start, rect_end
