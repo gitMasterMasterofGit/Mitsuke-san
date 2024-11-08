@@ -37,7 +37,7 @@ screen_thread = threading.Thread(target=screen_rec.record_screen, args=(aud_rec,
 screen_thread.daemon = True
 
 transcription_queue = Queue()
-trans_thread = threading.Thread(target=trans.transcribe_audio, args=(trans_save, aud_rec))
+trans_thread = threading.Thread(target=trans.transcribe_audio, args=(transcription_queue, aud_rec))
 
 def process_transcription(transcription):
     print("Finding words...")        
