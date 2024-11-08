@@ -9,22 +9,19 @@ import time
 
 class Queue:
     def __init__(self):
-        self.vals = [None for i in range(50)]
-        self.set_idx = 0
-        self.get_idx = 0
+        self.vals = []
 
     def add(self, val):
-        self.vals[self.set_idx] = val
-        self.set_idx += 1
+        self.vals.append(val)
 
     def get(self):
-        get = self.vals[self.get_idx]
-        if get != None:
-            self.get_idx += 1
-        return get
+        try:
+            return self.vals.pop(0)
+        except IndexError:
+            return None
     
     def fully_retreived(self):
-        return self.get_idx == len(self.vals) - 1
+        return not self.vals
 
 aud_rec = Recorder(silence_thresh=6, segment_duration=15)
 trans = Transcriber(aud_rec)
