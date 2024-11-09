@@ -16,6 +16,8 @@ class Transcriber:
         self.READ_BUFFER = read_buffer
         self.finished = False
         self.transcription = None
+        self.transcription_idx = 0
+        self.last_finished_idx = 0
         print(f"Loading {model_type} model...")
         self.model = whisper.load_model(model_type)
 
@@ -38,10 +40,11 @@ class Transcriber:
             os.remove(os.path.join(dir, f'{self.name}_{index}_text.txt'))
             index += 1
 
-    def transcribe_audio(self, idx, save_var, aud_rec):
+    def transcribe_audio(self, transcription_queue, aud_rec):
+        idx = self.transcription_idx
         try:
             while not self.finished:
-                if idx < aud_rec.audio_file_index:
+                if idx < aud_rec.audio_file_index or not aud_rec.stopped:
                     print(f"Transcrbing: out_{idx}.wav")
                     self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(idx))
                     self.has_new = True
@@ -54,10 +57,15 @@ class Transcriber:
                     f.close()
                     t.close()
 
-                    save_var.set(self.transcription)
+                    transcription_queue.add(self.transcription)
+                    self.last_finished_idx = idx
                     idx += 1
+
                 else:
                     self.finished = True
+                    print(f"Transcription index on stop {idx}")
+
+                print(f"Transcription on index {idx}")
 
         except RuntimeError:
             print("File not found")

@@ -2,6 +2,7 @@ import requests
 import json
 import shutil
 import time
+import random
 import soundfile as sf
 from janome.tokenizer import Tokenizer
 import pprint
@@ -19,14 +20,10 @@ particles = [
     'と',  # to (and, with)
     'も',  # mo (also)
     'や',  # ya (and, listing)
-    'と',  # to (quotation, condition)
-    'で',  # de (means, method)
     'ば',  # ba (if, conditional)
-    'の',  # no (nominalizer)
     'ね',  # ne (seeking confirmation)
     'よ',  # yo (assertion, emphasis)
     'か',  # ka (question marker)
-    'も',  # mo (also, too)
     'ん'   # not a particle, but means essentially nothing on its own
 ]
 
@@ -41,35 +38,6 @@ def response_feedback(response):
             print(f"Success: {result['result']}")
     else:
         print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
-
-def get_current_vocab():
-    payload = {
-    "action": "findCards",
-    "version": 6,
-    "params": {
-        "query": "deck:test"
-        }
-    }
-
-    # Send the request
-    response = requests.post(ANKI_CONNECT_URL, data=json.dumps(payload))
-    
-    response_feedback(response)
-
-    payload = {
-    "action": "cardsInfo",
-    "version": 6,
-    "params": {
-        "cards": response["result"]
-        }
-    }
-
-    # Send the request
-    response = requests.post(ANKI_CONNECT_URL, data=json.dumps(payload))
-    
-    response_feedback(response)
-
-    pprint.pprint(response)
 
 def definition_string_clean(string):
     clean = ""
@@ -95,9 +63,8 @@ def H_freq_lookup(target):
             return freq
     return freq
 
-def jmdict_lookup(target, find_by_reading=False, first_find=True):
-    global current_deck_vocab
-    if target in current_deck_vocab:
+def jmdict_lookup(deck, target, find_by_reading=False, first_find=True):
+    if target in deck.current_deck_vocab:
         print(f"{target} already in deck")
         return {"found": False}
     
@@ -209,26 +176,27 @@ def add_note(deck_name, model_name, content, sentence, picture, audio): # conten
     response_feedback(response)
 
 class Parser:
-    def __init__(self):
+    def __init__(self, deck):
         self.found_words = []
         self.finding_words = False
         self.times = []
         self.words_to_sentences = []
+        self.deck = deck
     
     def parse(self, text):
-        global current_deck_vocab
         for word in combine_results(parse_initial(text)):
-            dict_entry = jmdict_lookup(word, first_find=True)
+            dict_entry = jmdict_lookup(self.deck, word, first_find=True)
             if dict_entry["found"] == True:
                     print("Found: " + word)
                     self.found_words.append(dict_entry)
-                    current_deck_vocab.append(dict_entry["word"])
+                    self.deck.current_deck_vocab.append(dict_entry["word"])
         
         return self.found_words
     
-    def get_times(self, transcription, trans_idx):
+    def get_times(self, transcription, file_idx):
         for segment in transcription: # transcription["segments"]
-            self.times.append([segment["text"], (segment["start"], segment["end"]), trans_idx])
+            #print([segment["text"], (segment["start"], segment["end"]), file_idx])
+            self.times.append([segment["text"], (segment["start"], segment["end"]), file_idx])
 
     def find_sentence(self, word):
         for i in range(len(self.times)):
@@ -242,9 +210,11 @@ class Parser:
         for i in range(len(self.times)):
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
-                debug = word["word"]
-                img_idx = int((self.times[i][1][1] * aud_rec.SEGMENT_DURATION) / screen_rec.CAPTURE_INTERVAL)
-                print(f"word: {debug}\nimg idx: {img_idx}")
+                #debug = word["word"]
+                img_idx = int((self.times[i][2] * aud_rec.SEGMENT_DURATION) + 
+                                random.uniform(self.times[i][1][0], self.times[i][1][1]) / # takes random part from sentence to source image from
+                                screen_rec.CAPTURE_INTERVAL)
+                #print(f"word: {debug}\nimg idx: {img_idx}")
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
 
                 # move image to proper directory
@@ -263,7 +233,7 @@ class Parser:
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
-                print(f"{self.times[i][1][0]}, {self.times[i][1][1]}")
+                #print(f"{self.times[i][1][0]}s to {self.times[i][1][1]}s, from file {self.times[i][2]}")
                 try:
                     # record from temp audio file
                     data, samplerate = sf.read(f"AudioFiles/out_{self.times[i][2]}.wav")
@@ -277,7 +247,7 @@ class Parser:
                     if end > len(data):
                         end = int(self.times[i][1][1] * samplerate)
 
-                    print(f"Start: {start}, End: {end}")
+                    #print(f"Start: {start}, End: {end}")
                     aud_out = data[start : end]
 
                     # save new segment audio file
@@ -289,8 +259,8 @@ class Parser:
                     print(e)
 
 class CardCreator:
-    def __init__(self, deck_name, model_name):
-        self.deck_name = deck_name
+    def __init__(self, deck, model_name):
+        self.deck_name = deck.name
         self.model_name = model_name
         self.finished = False
 

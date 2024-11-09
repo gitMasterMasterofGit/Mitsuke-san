@@ -1,16 +1,15 @@
-from Cards import Parser
-from Cards import CardCreator
+import Cards
 from Transcribe import Transcriber
 from Record import Recorder
 from DataClear import FileClear
 import asyncio
 import Deck
 
-FileClear.clear("Images", "img", "jpg")
-FileClear.clear("AudioFiles", "out", "wav")
-Deck.clear("test")
-Deck.create_deck("test")
-
+# FileClear.clear("Images", "img", "jpg")
+# FileClear.clear("AudioFiles", "out", "wav")
+# Deck.clear("test")
+# Deck.create_deck("test")
+Cards.get_current_vocab("test")
 # aud_rec = Recorder(segment_duration=12)
 # p = Parser()
 # c = CardCreator("test", "JP Mining Note")
