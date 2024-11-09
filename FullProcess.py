@@ -1,9 +1,9 @@
 from Record import Recorder
 from Transcribe import Transcriber
-from Cards import Parser
-from Cards import CardCreator
 from ScreenRecord import ImageCapture
 from DataClear import FileClear
+from Deck import Deck
+import Cards
 import threading
 import time
 
@@ -23,11 +23,12 @@ class Queue:
     def fully_retreived(self):
         return not self.vals
 
-aud_rec = Recorder(silence_thresh=6, segment_duration=15)
+deck = Deck("test")
+aud_rec = Recorder(silence_thresh=6)
 trans = Transcriber(aud_rec)
-parser = Parser()
+parser = Cards.Parser(deck)
 screen_rec = ImageCapture(capture_interval=1)
-card_creator = CardCreator("test", "JP Mining Note")
+card_creator = Cards.CardCreator(deck, "JP Mining Note")
 parse_idx = 0
 
 rec_thread = threading.Thread(target=aud_rec.record_audio)
@@ -71,7 +72,7 @@ def main():
 
             else:
 
-                while not trans_save.fully_retreived():
+                while not transcription_queue.fully_retreived():
                     transcription = transcription_queue.get()  
                     process_transcription(transcription)
 
