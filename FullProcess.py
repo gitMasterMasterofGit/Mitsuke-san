@@ -23,7 +23,7 @@ class Queue:
     def fully_retreived(self):
         return not self.vals
 
-deck = Deck("test")
+deck = Deck("Mitsuke-san")
 aud_rec = Recorder(silence_thresh=6)
 trans = Transcriber(aud_rec)
 parser = Cards.Parser(deck)
@@ -78,7 +78,7 @@ def main():
 
                 FileClear.clear("Images", "img", "jpg", debug=True)
                 FileClear.clear("AudioFiles", "out", "wav", debug=True)
-                #trans.clear_transcription_data()
+                trans.clear_transcription_data()
                 break # kills program when all processes are done
 
     except (KeyboardInterrupt, SystemExit):
