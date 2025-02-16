@@ -5,7 +5,7 @@ import time
 import random
 import soundfile as sf
 from janome.tokenizer import Tokenizer
-import pprint
+import JSONReq as JR
 
 # Define the AnkiConnect endpoint
 ANKI_CONNECT_URL = 'http://localhost:8765'
@@ -146,34 +146,28 @@ def combine_results(result):
 
 # Define the request to add a new note
 def add_note(deck_name, model_name, content, sentence, picture, audio): # content is a placeholder for all necessary card info
-    # Create the payload
-    payload = {
-        'action': 'addNote',
-        'version': 6,
-        'params': {
-            'note': {
-                'deckName': deck_name,
-                'modelName': model_name,
-                'fields': { 
-                    'Key': content["word"],
-                    'Word': content["word"],
-                    'PrimaryDefinition': content["definition"],
-                    'Sentence': sentence,
-                    'Picture': f"<img src=\"{picture}\">",
-                    'SentenceAudio': f"[sound:{audio}]"
-                },
-                'tags': [],
-                'options': {
-                    'allowDuplicate': False
+    try:
+        response = JR.invoke("addNote", {
+                'note': {
+                    'deckName': deck_name,
+                    'modelName': model_name,
+                    'fields': { 
+                        'Key': content["word"],
+                        'Word': content["word"],
+                        'PrimaryDefinition': content["definition"],
+                        'Sentence': sentence,
+                        'Picture': f"<img src=\"{picture}\">",
+                        'SentenceAudio': f"[sound:{audio}]"
+                    },
+                    'tags': [],
+                    'options': {
+                        'allowDuplicate': False
+                    }
                 }
-            }
-        }
-    }
+            })
+    except Exception:
+        print(Exception)
 
-    # Send the request
-    response = requests.post(ANKI_CONNECT_URL, data=json.dumps(payload))
-    
-    response_feedback(response)
 
 class Parser:
     def __init__(self, deck):
@@ -194,9 +188,9 @@ class Parser:
         return self.found_words
     
     def get_times(self, transcription, file_idx):
-        for segment in transcription: # transcription["segments"]
+            # transcription["segments"]
             #print([segment["text"], (segment["start"], segment["end"]), file_idx])
-            self.times.append([segment["text"], (segment["start"], segment["end"]), file_idx])
+        self.times.append([transcription[0]["text"], (transcription[0]["start"], transcription[0]["end"]), file_idx])
 
     def find_sentence(self, word):
         for i in range(len(self.times)):

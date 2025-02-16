@@ -1,11 +1,12 @@
 import whisper
+import whisperx
 import json
 import os
 import time
 
 def save_transcription(f, t, transcription):
     json.dump(transcription["segments"], f, ensure_ascii=False, indent=4)
-    t.write(transcription["text"].encode(errors='ignore'))
+    t.write(transcription["segments"][0]["text"].encode(errors='ignore'))
     print("Saved transcriptions")
 
 class Transcriber:
@@ -19,7 +20,7 @@ class Transcriber:
         self.transcription_idx = 0
         self.last_finished_idx = 0
         print(f"Loading {model_type} model...")
-        self.model = whisper.load_model(model_type)
+        self.model = whisperx.load_model(model_type, device="cpu", compute_type="int8")
 
     def get_transcription_file_name(self, idx):
         return {"json": os.path.join(self.SAVE_DIRECTORY, f'{self.name}_{idx}_segments.json'), "txt": os.path.join(self.SAVE_DIRECTORY, f'{self.name}_{idx}_text.txt')}
@@ -46,8 +47,12 @@ class Transcriber:
             while not self.finished:
                 if idx < aud_rec.audio_file_index or not aud_rec.stopped:
                     print(f"Transcrbing: out_{idx}.wav")
-                    self.transcription = self.model.transcribe(self.recorder.get_audio_file_name(idx))
+                    audio = whisperx.load_audio(self.recorder.get_audio_file_name(idx))
+                    self.transcription = self.model.transcribe(audio, batch_size=16)
                     self.has_new = True
+
+                    model_a, metadata = whisperx.load_align_model(language_code=self.transcription["language"], device="cpu")
+                    self.transcription = whisperx.align(self.transcription["segments"], model_a, metadata, audio, device="cpu", return_char_alignments=False)
 
                     print(f"Saving transcription: {idx}")
                     f = open(self.get_transcription_file_name(idx)["json"], "w", encoding="utf-8")

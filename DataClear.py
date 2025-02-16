@@ -2,7 +2,7 @@ import os
 
 class FileClear:
     def clear(dir, name, file_type, index=None, debug=False):
-        if debug: #lets me not clear the files for testing
+        if debug: #skips file clearing for testing
             return
         
         if index != None:
