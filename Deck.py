@@ -19,11 +19,11 @@ def word_string_clean(unparsed):
 
 class Deck:
 
-    def __init__(self, name):
+    def __init__(self, name, debug=False):
         self.name = name
         self.current_deck_vocab = []
-        self.get_current_vocab()
-        print(self.current_deck_vocab)
+        if not debug:
+            self.get_current_vocab()
 
     def clear(self):
         JR.invoke("deleteDecks", {
@@ -40,7 +40,8 @@ class Deck:
         else:
             self.clear(self.name)
 
-    def get_current_vocab(self):
+    def get_current_vocab(self): 
+        #deck name can't have spaces or this won't work
         response = JR.invoke("findCards", params={
             "query": f"deck:{self.name}"
             })

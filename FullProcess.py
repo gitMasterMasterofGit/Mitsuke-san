@@ -6,6 +6,7 @@ from Deck import Deck
 import Cards
 import threading
 import time
+import ChromeUIHandler
 
 class Queue:
     def __init__(self):
@@ -22,9 +23,11 @@ class Queue:
     
     def fully_retreived(self):
         return not self.vals
+    
+DEBUG = True
 
-deck = Deck("Mitsuke-san")
-aud_rec = Recorder(silence_thresh=6)
+deck = Deck("test")
+aud_rec = Recorder(silence_thresh=6, record_for_seconds=120)
 trans = Transcriber(aud_rec)
 parser = Cards.Parser(deck)
 screen_rec = ImageCapture(capture_interval=1)
@@ -42,13 +45,14 @@ trans_thread = threading.Thread(target=trans.transcribe_audio, args=(transcripti
 
 def process_transcription(transcription):
     print("Finding words...")        
-    found_words = parser.parse(transcription["text"])
+    found_words = parser.parse(transcription["segments"][0]["text"])
     parser.get_times(transcription["segments"], trans.last_finished_idx)
     card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
         
 def main():
-    # try except loop allows KeyboardInterrupt to kill the program
+    
     try:
+        ChromeUIHandler.open_window("Chrome")
         screen_rec.start()
         # Pauses until capture area is defined
         while not screen_rec.have_bounding_box:
@@ -62,7 +66,7 @@ def main():
 
         while True:
 
-            if not trans.finished: # ensures program runs until user kills it or transcription is complete
+            if not trans.finished:
 
                 transcription = transcription_queue.get()
                 if transcription is not None:        
@@ -76,10 +80,10 @@ def main():
                     transcription = transcription_queue.get()  
                     process_transcription(transcription)
 
-                FileClear.clear("Images", "img", "jpg", debug=True)
-                FileClear.clear("AudioFiles", "out", "wav", debug=True)
+                FileClear.clear("Images", "img", "jpg", debug=DEBUG)
+                FileClear.clear("AudioFiles", "out", "wav", debug=DEBUG)
                 trans.clear_transcription_data()
-                break # kills program when all processes are done
+                break
 
     except (KeyboardInterrupt, SystemExit):
         print("Process ended")

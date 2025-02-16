@@ -3,6 +3,8 @@ import soundfile as sf
 import os
 import random
 import numpy
+import time
+import math
 
 def silence_check(recorder, data, count_start=False): # could possibly be combined with smaller snapshots of the audio to make detection faster
         silence_count = 0
@@ -35,30 +37,38 @@ def silence_check(recorder, data, count_start=False): # could possibly be combin
         return False
 
 class Recorder:
-    def __init__(self, save_directory="AudioFiles", sample_rate=48000, segment_duration=30, silence_thresh=3):
+    def __init__(self, save_directory="AudioFiles", sample_rate=48000, segment_duration=30, silence_thresh=3, record_for_seconds=math.inf):
         self.SAVE_DIRECTORY = save_directory
         self.SAMPLE_RATE = sample_rate           
         self.SEGMENT_DURATION = segment_duration
         self.SILENCE_CUT_THRESH = silence_thresh
         self.audio_file_index = 0
+        self.max_rec_time = record_for_seconds
         self.stopped = False
 
     def get_audio_file_name(self, idx):
         return os.path.join(self.SAVE_DIRECTORY, f'out_{idx}.wav')
 
     def record_audio(self):
+        start_time = time.time()
         with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.SAMPLE_RATE) as mic:
             while True:
                 # record audio with loopback from default speaker.
                 print(f"Recording to file: out_{self.audio_file_index}.wav")
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
+                cur_time = time.time()
                 if silence_check(self, data): #checks for silent audio
                     print("No audio detected, stopping audio recording")
                     print(f"Index on stop: {self.audio_file_index}")
                     self.stopped = True
-                    break
+
+                if cur_time - start_time > self.max_rec_time:
+                    print("Max recording length reached")
+                    print(f"Stopped at time {cur_time - start_time}s based on {self.max_rec_time}s")
+                    self.stopped = True
 
                 sf.write(file=self.get_audio_file_name(self.audio_file_index), data=data[:, 0], samplerate=self.SAMPLE_RATE)
                 print(f"Saved: out_{self.audio_file_index}.wav")
                 if not self.stopped: #prevents transcriber from trying to read non-existent audio files
                     self.audio_file_index += 1
+                else: break
