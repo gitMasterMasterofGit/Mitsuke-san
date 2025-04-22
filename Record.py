@@ -57,18 +57,22 @@ class Recorder:
                 print(f"Recording to file: out_{self.audio_file_index}.wav")
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
                 cur_time = time.time()
-                if silence_check(self, data): #checks for silent audio
-                    print("No audio detected, stopping audio recording")
-                    print(f"Index on stop: {self.audio_file_index}")
-                    self.stopped = True
+                delta_time = cur_time - start_time
+                if delta_time > self.SEGMENT_DURATION: # prevents silence check from stopping recording too early
+                    if silence_check(self, data): # checks for silent audio
+                        print("No audio detected, stopping audio recording")
+                        print(f"Index on stop: {self.audio_file_index}")
+                        self.stopped = True
 
-                if cur_time - start_time > self.max_rec_time:
+                if delta_time > self.max_rec_time:
                     print("Max recording length reached")
-                    print(f"Stopped at time {cur_time - start_time}s based on {self.max_rec_time}s")
+                    print(f"Stopped at time {delta_time}s based on {self.max_rec_time}s")
                     self.stopped = True
 
                 sf.write(file=self.get_audio_file_name(self.audio_file_index), data=data[:, 0], samplerate=self.SAMPLE_RATE)
                 print(f"Saved: out_{self.audio_file_index}.wav")
-                if not self.stopped: #prevents transcriber from trying to read non-existent audio files
+                if not self.stopped: # prevents transcriber from trying to read non-existent audio files
                     self.audio_file_index += 1
-                else: break
+                else: 
+                    print("Audio recording stopped")
+                    break

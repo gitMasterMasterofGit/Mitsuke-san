@@ -29,7 +29,8 @@ class Transcriber:
         self.has_new = False
         return self.transcription
     
-    def clear_transcription_data(self):
+    def clear_transcription_data(self, debug=False):
+        if debug: return
         index = 0
         dir = "TranscriptionData"
         while os.path.exists(os.path.join(dir, f'{self.name}_{index}_segments.json')):
@@ -62,7 +63,7 @@ class Transcriber:
                     f.close()
                     t.close()
 
-                    transcription_queue.add(self.transcription)
+                    transcription_queue.put(self.transcription)
                     self.last_finished_idx = idx
                     idx += 1
 

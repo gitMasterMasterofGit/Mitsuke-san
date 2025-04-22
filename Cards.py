@@ -3,6 +3,7 @@ import json
 import shutil
 import time
 import random
+import re
 import soundfile as sf
 from janome.tokenizer import Tokenizer
 import JSONReq as JR
@@ -29,16 +30,6 @@ particles = [
 
 current_deck_vocab = []
 
-def response_feedback(response):
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('error'):
-            print(f"Error: {result['error']}")
-        else:
-            print(f"Success: {result['result']}")
-    else:
-        print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
-
 def definition_string_clean(string):
     clean = ""
     for i in range(1, len(string)):
@@ -53,7 +44,10 @@ def definition_string_clean(string):
                 print("")
     return clean
 
-def H_freq_lookup(target):
+def H_freq_lookup(target, active=False):
+    if not active:
+        return
+    
     freq = 0
     with open('H_freq_frequency_dict/term_meta_bank_1.json', 'r', encoding="utf-8") as f:
         data = json.load(f)
@@ -103,10 +97,8 @@ def jmdict_lookup(deck, target, find_by_reading=False, first_find=True):
         return {"found": found}
     
 def parse_initial(text):
-    # Initialize Janome Tokenizer
     tokenizer = Tokenizer()
     
-    # Initialize lists to hold parts of speech
     adjectives = []
     nouns = []
     verbs = []
@@ -120,7 +112,6 @@ def parse_initial(text):
         part_of_speech = token.part_of_speech.split(',')[0]
         base_form = token.base_form
 
-        # Categorizing the token based on its part of speech
         if part_of_speech == '名詞':
             nouns.append(surface)
         elif part_of_speech == '形容詞':
@@ -145,26 +136,26 @@ def combine_results(result):
     return list
 
 # Define the request to add a new note
-def add_note(deck_name, model_name, content, sentence, picture, audio): # content is a placeholder for all necessary card info
+def add_note(deck_name, model_name, word_info, sentence, picture, audio): 
     try:
-        response = JR.invoke("addNote", {
-                'note': {
-                    'deckName': deck_name,
-                    'modelName': model_name,
-                    'fields': { 
-                        'Key': content["word"],
-                        'Word': content["word"],
-                        'PrimaryDefinition': content["definition"],
-                        'Sentence': sentence,
-                        'Picture': f"<img src=\"{picture}\">",
-                        'SentenceAudio': f"[sound:{audio}]"
-                    },
-                    'tags': [],
-                    'options': {
-                        'allowDuplicate': False
-                    }
+        JR.invoke("addNote", {
+            'note': {
+                'deckName': deck_name,
+                'modelName': model_name,
+                'fields': { 
+                    'Key': word_info["word"],
+                    'Word': word_info["word"],
+                    'PrimaryDefinition': word_info["definition"],
+                    'Sentence': sentence,
+                    'Picture': f"<img src=\"{picture}\">",
+                    'SentenceAudio': f"[sound:{audio}]"
+                },
+                'tags': [],
+                'options': {
+                    'allowDuplicate': False
                 }
-            })
+            }
+        })
     except Exception:
         print(Exception)
 
@@ -188,9 +179,21 @@ class Parser:
         return self.found_words
     
     def get_times(self, transcription, file_idx):
-            # transcription["segments"]
-            #print([segment["text"], (segment["start"], segment["end"]), file_idx])
-        self.times.append([transcription[0]["text"], (transcription[0]["start"], transcription[0]["end"]), file_idx])
+        text = re.sub(r"[、!?。]", " ", transcription[0]["text"])
+        for str in text.split(" "):
+            if len(str) < 1:
+                continue
+            first_token = str[0]
+            last_token = str[len(str) - 1]
+            start = transcription[0]["start"]
+            end = transcription[0]["end"]
+            for token in transcription[0]["words"]:
+                if token["word"] == first_token and "start" in token:
+                    start = token["start"]
+                if token["word"] == last_token and "end" in token:
+                    end = token["end"]
+            self.times.append([str, (start, end), file_idx])
+            print([str, (start, end), file_idx])
 
     def find_sentence(self, word):
         for i in range(len(self.times)):
@@ -204,11 +207,9 @@ class Parser:
         for i in range(len(self.times)):
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
-                #debug = word["word"]
                 img_idx = int((self.times[i][2] * aud_rec.SEGMENT_DURATION) + 
                                 random.uniform(self.times[i][1][0], self.times[i][1][1]) / # takes random part from sentence to source image from
                                 screen_rec.CAPTURE_INTERVAL)
-                #print(f"word: {debug}\nimg idx: {img_idx}")
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
 
                 # move image to proper directory
@@ -227,7 +228,6 @@ class Parser:
             text_tokens = combine_results(parse_initial(self.times[i][0]))
             if word["word"] in text_tokens:
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
-                #print(f"{self.times[i][1][0]}s to {self.times[i][1][1]}s, from file {self.times[i][2]}")
                 try:
                     # record from temp audio file
                     data, samplerate = sf.read(f"AudioFiles/out_{self.times[i][2]}.wav")
@@ -241,7 +241,6 @@ class Parser:
                     if end > len(data):
                         end = int(self.times[i][1][1] * samplerate)
 
-                    #print(f"Start: {start}, End: {end}")
                     aud_out = data[start : end]
 
                     # save new segment audio file

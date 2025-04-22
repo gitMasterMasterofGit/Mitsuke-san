@@ -2,7 +2,7 @@ import cv2
 import keyboard._keyboard_event
 import numpy as np
 import time
-import ChromeUIHandler
+import pygetwindow as gw
 from DataClear import FileClear as fc
 from mss import mss
 
@@ -11,6 +11,17 @@ start_img = None
 rect_start = None
 rect_end = None
 drawing = False
+
+def focus_window(title):
+    windows = gw.getWindowsWithTitle(title)
+    if windows:
+        try:
+            windows[0].activate()  # Bring window to the front
+            print(f"[+] Focused: {title}")
+        except Exception:
+            print("Somethin's buggin")
+    else:
+        print(f"[!] Window not found: {title}")
 
 class ImageCapture:
 
@@ -85,7 +96,7 @@ class ImageCapture:
         while not self.have_bounding_box:
             # Display the image
             cv2.imshow("Draw Rectangle", temp_image)
-            ChromeUIHandler.open_window("Draw Rectangle")
+            focus_window("Draw Rectangle")
 
             # Take fullscreen captures
             if cv2.waitKey(1) & 0xFF == ord('r'):
