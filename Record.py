@@ -57,10 +57,10 @@ class Recorder:
                 print(f"Recording to file: out_{self.audio_file_index}.wav")
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
                 cur_time = time.time()
-                if silence_check(self, data): #checks for silent audio
-                    print("No audio detected, stopping audio recording")
-                    print(f"Index on stop: {self.audio_file_index}")
-                    self.stopped = True
+                # if silence_check(self, data): #checks for silent audio
+                #     print("No audio detected, stopping audio recording")
+                #     print(f"Index on stop: {self.audio_file_index}")
+                #     self.stopped = True
 
                 if cur_time - start_time > self.max_rec_time:
                     print("Max recording length reached")

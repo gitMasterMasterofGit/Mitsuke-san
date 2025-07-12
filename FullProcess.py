@@ -27,7 +27,7 @@ class Queue:
 DEBUG = True
 
 deck = Deck("test")
-aud_rec = Recorder(silence_thresh=6, record_for_seconds=120)
+aud_rec = Recorder(silence_thresh=10, record_for_seconds=60)
 trans = Transcriber(aud_rec)
 parser = Cards.Parser(deck)
 screen_rec = ImageCapture(capture_interval=1)
@@ -44,12 +44,18 @@ transcription_queue = Queue()
 trans_thread = threading.Thread(target=trans.transcribe_audio, args=(transcription_queue, aud_rec))
 
 def process_transcription(transcription):
-    print("Finding words...")        
-    found_words = parser.parse(transcription["segments"][0]["text"])
-    parser.get_times(transcription["segments"], trans.last_finished_idx)
-    card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
+    print("Finding words...")    
+    for i in range(len(transcription["segments"])):   
+        found_words = parser.parse(transcription["segments"][i]["text"])
+        parser.get_times(transcription["segments"], trans.last_finished_idx, i)
+        card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
         
 def main():
+
+    test = Deck("test", debug=True)
+
+    test.clear()
+    test.create_deck()
     
     try:
         ChromeUIHandler.open_window("Chrome")
@@ -82,7 +88,8 @@ def main():
 
                 FileClear.clear("Images", "img", "jpg", debug=DEBUG)
                 FileClear.clear("AudioFiles", "out", "wav", debug=DEBUG)
-                trans.clear_transcription_data()
+                FileClear.clear("TranscriptionData", "trans", "json", debug=DEBUG)
+                FileClear.clear("TranscriptionData", "trans", "txt", debug=DEBUG)
                 break
 
     except (KeyboardInterrupt, SystemExit):
@@ -90,8 +97,9 @@ def main():
         if transcription is not None:
             process_transcription(transcription)
 
-        FileClear.clear("Images", "img", "jpg")
-        FileClear.clear("AudioFiles", "out", "wav")
-        trans.clear_transcription_data()
+        FileClear.clear("Images", "img", "jpg", debug=DEBUG)
+        FileClear.clear("AudioFiles", "out", "wav", debug=DEBUG)
+        FileClear.clear("TranscriptionData", "trans", "json", debug=DEBUG)
+        FileClear.clear("TranscriptionData", "trans", "txt", debug=DEBUG)
 
 main()

@@ -67,7 +67,9 @@ class ImageCapture:
     def __init__(self, capture_interval=1):
         self.CAPTURE_INTERVAL = capture_interval
         self.img_cache = []
-        self.bounding_box = {'top': 0, 'left': 0, 'width': 1920, 'height': 1080}
+        with mss() as sct:
+            monitor = sct.monitors[1]
+            self.bounding_box = {'top': 0, 'left': 0, 'width': monitor['width'], 'height': monitor['height']}
         self.im_count = 0
 
     def start(self):

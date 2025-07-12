@@ -4,28 +4,15 @@ import shutil
 import time
 import random
 import soundfile as sf
-from janome.tokenizer import Tokenizer
 import JSONReq as JR
+import JPLangFeatures as JP
+import SentenceSplit
+from sudachipy import tokenizer
+from sudachipy import dictionary
 
 # Define the AnkiConnect endpoint
 ANKI_CONNECT_URL = 'http://localhost:8765'
-
-particles = [
-    'は',  # wa (topic marker)
-    'が',  # ga (subject marker)
-    'の',  # no (possessive or descriptive)
-    'に',  # ni (direction, target)
-    'で',  # de (location, means)
-    'へ',  # e (direction)
-    'と',  # to (and, with)
-    'も',  # mo (also)
-    'や',  # ya (and, listing)
-    'ば',  # ba (if, conditional)
-    'ね',  # ne (seeking confirmation)
-    'よ',  # yo (assertion, emphasis)
-    'か',  # ka (question marker)
-    'ん'   # not a particle, but means essentially nothing on its own
-]
+ANKI_MEDIA_FOLDER = r"C:/Users/Oorra/AppData/Roaming/Anki2/User 1/collection.media/"
 
 current_deck_vocab = []
 
@@ -64,6 +51,10 @@ def H_freq_lookup(target):
     return freq
 
 def jmdict_lookup(deck, target, find_by_reading=False, first_find=True):
+    if target in JP.hiragana or target in JP.katakana or target in JP.punctuation or target in JP.filter: # counteracts the tokenizer's tendency to return single characters
+        print("Filtered")
+        return {"found": False}
+
     if target in deck.current_deck_vocab:
         print(f"{target} already in deck")
         return {"found": False}
@@ -84,7 +75,7 @@ def jmdict_lookup(deck, target, find_by_reading=False, first_find=True):
             idx = 0
             for term in data:
                 idx += 1 # index within the page
-                if ((term[0] == target and not find_by_reading) or (term[1] == target and find_by_reading)) and term[0] not in particles:
+                if (term[0] == target and not find_by_reading) or (term[1] == target and find_by_reading):
                     reading = term[1]
                     found = True
                     for element in term:
@@ -102,47 +93,17 @@ def jmdict_lookup(deck, target, find_by_reading=False, first_find=True):
     else:
         return {"found": found}
     
-def parse_initial(text):
-    # Initialize Janome Tokenizer
-    tokenizer = Tokenizer()
-    
-    # Initialize lists to hold parts of speech
-    adjectives = []
-    nouns = []
-    verbs = []
 
-    result = tokenizer.tokenize(text)
+tokenizer_obj = dictionary.Dictionary().create()   
+mode = tokenizer.Tokenizer.SplitMode.C
+def parse_tokens(text):
+    out = []
+    tokens = tokenizer_obj.tokenize(text, mode)
+    for token in tokens:
+        out.append(token.dictionary_form())
 
-    # Tokenize and analyze each token
-    for token in result:
-        # Extracting the features from each token
-        surface = token.surface
-        part_of_speech = token.part_of_speech.split(',')[0]
-        base_form = token.base_form
+    return out
 
-        # Categorizing the token based on its part of speech
-        if part_of_speech == '名詞':
-            nouns.append(surface)
-        elif part_of_speech == '形容詞':
-            adjectives.append(base_form)
-        elif part_of_speech == '動詞':
-            verbs.append(base_form)
-    
-    return {
-        'adjectives': adjectives,
-        'nouns': nouns,
-        'verbs': verbs
-    }
-
-def combine_results(result):
-    list = []
-    for a in result["adjectives"]:
-        list.append(a)
-    for n in result["nouns"]:
-        list.append(n)
-    for v in result["verbs"]:
-        list.append(v)
-    return list
 
 # Define the request to add a new note
 def add_note(deck_name, model_name, content, sentence, picture, audio): # content is a placeholder for all necessary card info
@@ -154,6 +115,7 @@ def add_note(deck_name, model_name, content, sentence, picture, audio): # conten
                     'fields': { 
                         'Key': content["word"],
                         'Word': content["word"],
+                        'WordReading': content["reading"],
                         'PrimaryDefinition': content["definition"],
                         'Sentence': sentence,
                         'Picture': f"<img src=\"{picture}\">",
@@ -176,9 +138,10 @@ class Parser:
         self.times = []
         self.words_to_sentences = []
         self.deck = deck
+        self.current_audio_session_UID = 0
     
     def parse(self, text):
-        for word in combine_results(parse_initial(text)):
+        for word in parse_tokens(text):
             dict_entry = jmdict_lookup(self.deck, word, first_find=True)
             if dict_entry["found"] == True:
                     print("Found: " + word)
@@ -187,22 +150,22 @@ class Parser:
         
         return self.found_words
     
-    def get_times(self, transcription, file_idx):
-            # transcription["segments"]
-            #print([segment["text"], (segment["start"], segment["end"]), file_idx])
-        self.times.append([transcription[0]["text"], (transcription[0]["start"], transcription[0]["end"]), file_idx])
+    def get_times(self, transcription, file_idx, segment_idx):
+        self.times.append([transcription[segment_idx]["text"], (transcription[segment_idx]["start"], transcription[segment_idx]["end"]), file_idx])
 
     def find_sentence(self, word):
         for i in range(len(self.times)):
-            text_tokens = combine_results(parse_initial(self.times[i][0]))
+            text_tokens = parse_tokens(self.times[i][0])
             if word["word"] in text_tokens:
-                return self.times[i][0] # sentence the word came from
+                split_sen = SentenceSplit.split(self.times[i][0]) # sentence the word came from
+                for sen in split_sen:
+                    if word["word"] in sen["sentence"]: return sen["sentence"]
             
     def find_image(self, word, aud_rec, screen_rec):
-        SOURCE_PATH = r"C:/Users/Oorrange/AppData/Local/Programs/Python/Python312/Mitsuke-san/Images/"
-        DEST_PATH = r"C:/Users/Oorrange/AppData/Roaming/Anki2/User 1/collection.media/"
+        SOURCE_PATH = r"C:/Users/Oorra/Desktop/Mitsuke-san/Images/"
+        DEST_PATH = ANKI_MEDIA_FOLDER
         for i in range(len(self.times)):
-            text_tokens = combine_results(parse_initial(self.times[i][0]))
+            text_tokens = parse_tokens(self.times[i][0])
             if word["word"] in text_tokens:
                 #debug = word["word"]
                 img_idx = int((self.times[i][2] * aud_rec.SEGMENT_DURATION) + 
@@ -212,45 +175,71 @@ class Parser:
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
 
                 # move image to proper directory
+                name = f"Mitsuke_img_{img_idx}_at_{time_id}.jpg"
                 try:
-                    shutil.copy(SOURCE_PATH + f"img_{img_idx}.jpg", 
-                          DEST_PATH + f"img_{img_idx} at {time_id}.jpg")
+                    shutil.copy(SOURCE_PATH + f"img_{img_idx}.jpg", DEST_PATH + name)
                 except FileNotFoundError as e:
-                    time.sleep(0.0001)
+                    print(e)
                 
-                return f"img_{img_idx} at {time_id}.jpg" 
+                return name 
             
     def get_audio(self, word):
-        DEST_PATH = r"C:/Users/Oorrange/AppData/Roaming/Anki2/User 1/collection.media/"
-        BUFFER = 0.25 # seconds
+        DEST_PATH = ANKI_MEDIA_FOLDER
+        BUFFER = 0.1 # seconds
+        target_sen = None
+        len_track = 0
         for i in range(len(self.times)):
-            text_tokens = combine_results(parse_initial(self.times[i][0]))
+            text_tokens = parse_tokens(self.times[i][0])
             if word["word"] in text_tokens:
-                time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
-                #print(f"{self.times[i][1][0]}s to {self.times[i][1][1]}s, from file {self.times[i][2]}")
-                try:
-                    # record from temp audio file
-                    data, samplerate = sf.read(f"AudioFiles/out_{self.times[i][2]}.wav")
+                split_sen = SentenceSplit.split(self.times[i][0])
+                for sen in split_sen:
+                    if word["word"] in sen["sentence"]: 
+                        target_sen = sen
+                        print(f"\ntarget sen: {target_sen}\n")
+                        print("Word: ", {word["word"]})
+                        print("Len track: ", len_track)
+                        print("Sen length: ", target_sen["length"])
+                        time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
+                        try:
+                            with open(f'TranscriptionData/trans_{self.times[i][2]}.json', 'r', encoding='utf-8') as file:
+                                data = json.load(file)
+                                words = data[0]["words"]
+                                print("Words len: ", len(words))
+                                start_time = words[len_track]["start"]
+                                print(f"Start: {start_time}", end=" ")
+                                print("word: ", {words[len_track]["word"]})
+                                end_time = words[len_track + target_sen["length"] - 1]["end"]
+                                print(f"End: {end_time}", end=" ")
+                                print("word: ", words[len_track + target_sen["length"] - 1]["word"])
+                                print(f"out_{self.times[i][2]}.wav")
 
-                    # record sentence audio
-                    start = int(self.times[i][1][0] * samplerate) - int(BUFFER * samplerate)
-                    if start < 0:
-                        start = int(self.times[i][1][0] * samplerate)
-            
-                    end = int(self.times[i][1][1] * samplerate) + int(BUFFER * samplerate)
-                    if end > len(data):
-                        end = int(self.times[i][1][1] * samplerate)
+                                # record from temp audio file
+                                data, samplerate = sf.read(f"AudioFiles/out_{self.times[i][2]}.wav")
 
-                    #print(f"Start: {start}, End: {end}")
-                    aud_out = data[start : end]
+                                # record sentence audio
+                                start = int(start_time * samplerate) - int(BUFFER * samplerate)
+                                if start < 0:
+                                    start = int(start_time * samplerate)
+                        
+                                end = int(end_time * samplerate) + int(BUFFER * samplerate)
+                                if end > len(data):
+                                    end = int(end_time * samplerate)
 
-                    # save new segment audio file
-                    sf.write(DEST_PATH + f"out_{time_id}.wav", aud_out, samplerate)
+                                print(f"Start Final: {start/samplerate}, End Final: {end/samplerate}")
+                                aud_out = data[start : end]
 
-                    # return file name to fill Anki card field
-                    return f"out_{time_id}.wav"
-                except SystemError as e:
-                    print(e)
+                                name = f"Mitsuke_out_{time_id}_{self.current_audio_session_UID}.wav"
+                                self.current_audio_session_UID += 1
+                                print(name)
+                                # save new segment audio file
+                                sf.write(DEST_PATH + name, aud_out, samplerate)
+
+                                # return file name to fill Anki card field
+                                return name
+                        except SystemError as e:
+                            print(e)
+                    else:
+                        len_track += sen["length"]
 
 class CardCreator:
     def __init__(self, deck, model_name):

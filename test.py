@@ -25,31 +25,30 @@ def double_search_kanji(list, target):
     i = 0
     while(list[i] == ''):
         i += 1
-    low = ord(list[i])
-    high = ord(list[len(list) - 1])
-    start = random.randint(low, high)
+    start = random.randint(0, len(list) - 1)
     ti = time.time()
     print(start)
     for i in range(len(list) - start):
         ret_right = list[(start + i) % len(list)]
         ret_left = list[(start - i)]
         if(ret_right == target):
+            tf = time.time()
+            print(f"Time: {tf-ti}")
             return ret_right
         if(ret_left == target):
+            tf = time.time()
+            print(f"Time: {tf-ti}")
             return ret_left
-        print(f"Left: {ret_left}, Right: {ret_right}")
     tf = time.time()
     print(f"Time: {tf-ti}")
     return ""
 
 deck = Deck("Immersion")
 deck.get_current_vocab()
-ti = time.time()
 new = sorted(deck.current_deck_vocab, key=lambda x: ord(x[0]) if len(x) > 0 else 0)
-tf = time.time()
-print(f"Kanji Sort, Time: {tf - ti}")
-print(new)
-for i in range(20):
-    print()
+for i in range(5):
+    print("**************************************")
+    time.sleep(1)
 
-print(double_search_kanji(new, "擦りつける"))
+for i in range(10):
+    print(double_search_kanji(new, "療法"))
