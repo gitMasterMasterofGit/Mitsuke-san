@@ -51,11 +51,6 @@ def process_transcription(transcription):
         card_creator.create_cards_from_parse(found_words, parser, aud_rec, screen_rec)
         
 def main():
-
-    test = Deck("test", debug=True)
-
-    test.clear()
-    test.create_deck()
     
     try:
         ChromeUIHandler.open_window("Chrome")

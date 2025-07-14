@@ -185,7 +185,7 @@ class Parser:
             
     def get_audio(self, word):
         DEST_PATH = ANKI_MEDIA_FOLDER
-        BUFFER = 0.1 # seconds
+        BUFFER = 0.25 # seconds
         target_sen = None
         len_track = 0
         for i in range(len(self.times)):

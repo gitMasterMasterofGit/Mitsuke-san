@@ -1,0 +1,17 @@
+{
+    "settings": [{
+        "type": "user",
+        "ANKI_MEDIA_FOLDER": ""
+    },
+    {
+        "type": "audio",
+        "sample_rate": 48000,
+        "segment_duration": 30,
+        "max_record_length": "inf"
+    },
+    {
+        "type": "video",
+        "capture_interval": 1
+    }
+    ]
+}
