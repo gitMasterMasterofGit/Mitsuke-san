@@ -1,5 +1,5 @@
 .venv/
-__pycahce__
+__pycahce__/
 AudioFiles
 H_freq_frequency_dict
 Images
@@ -8,3 +8,7 @@ Test Audio
 Test Transcriptions
 TestPrograms
 TranscriptionData
+test.py
+test1.py
+test3.py
+test4.py

@@ -1,22 +1,72 @@
-from enum import Enum
-from abc import ABC, abstractmethod
 import os
 import math
 import inspect
 import json
+import getpass
 
 class Settings():
-    def get_settings(settings_obj):
+    def get_settings(self):
         return [{
-            name: getattr(settings_obj, name)
-            for name, value in inspect.getmembers(type(settings_obj))
+            name: getattr(self, name)
+            for name, value in inspect.getmembers(type(self))
             if isinstance(value, property)
         }
     ]
 
+    def save(self):
+        new_settings = self.get_settings()
+        with open("CONFIG.json", 'r') as file:
+            data = json.load(file)
+
+            for setting in data["settings"]:
+                if setting["type"] == self.type:
+                    for option in setting.keys():
+                        setting[option] = new_settings[0][option]
+                    break
+
+        with open('CONFIG.json', 'w') as file:
+            json.dump(data, file, indent=4)
+
+    def load(self):
+        with open("CONFIG.json", 'r') as file:
+            data = json.load(file)
+
+            for setting in data["settings"]:
+                if setting["type"] == self.type:
+                    for option in setting.keys():
+                        try:
+                            setattr(self, option, setting[option]) 
+                        except AttributeError:
+                            pass
+                    break
+
+    def reset():
+        user = UserSettings()
+        aud = AudioRecordSettings()
+        vid = ScreenRecordSettings()
+        user.save()
+        aud.save()
+        vid.save()
+                        
 class UserSettings(Settings):
     def __init__(self):
-        self._ANKI_MEDIA_FOLDER = ""
+        self._type = "user"
+        self._deck = "Mitsuke-san"
+        self._ANKI_MEDIA_FOLDER = f"C:/Users/{getpass.getuser()}/AppData/Roaming/Anki2/User 1/collection.media/" 
+
+    @property
+    def type(self):
+        return self._type
+    
+    @property
+    def deck(self):
+        return self._deck
+    
+    @deck.setter
+    def deck(self, new):
+        # change later
+        if type(new) == str:
+            self._deck = new
 
     @property
     def ANKI_MEDIA_FOLDER(self):
@@ -31,9 +81,14 @@ class UserSettings(Settings):
 
 class AudioRecordSettings(Settings):
     def __init__(self):
+        self._type = "audio"
         self._sample_rate = 48000
         self._segment_duration = 30
-        self._max_record_length = math.inf
+        self._max_record_length = 86400
+
+    @property
+    def type(self):
+        return self._type
 
     @property
     def sample_rate(self):
@@ -62,7 +117,13 @@ class AudioRecordSettings(Settings):
 
 class ScreenRecordSettings(Settings):
     def __init__(self):
-        self._capture_interval = 1
+        self._type = "video"
+        self._capture_interval = 1 # sec
+        self._mem_limit = 30 # mb
+
+    @property
+    def type(self):
+        return self._type
 
     @property
     def capture_interval(self):
@@ -73,7 +134,24 @@ class ScreenRecordSettings(Settings):
         if new >= 1 and new <= 10:
             self._capture_interval = new
 
+    @property
+    def mem_limit(self):
+        return self._mem_limit
+    
+    @mem_limit.setter
+    def mem_limit(self, new):
+        # new will be passed in mb
+        if new > 0 and new <= 1024:
+            self._mem_limit = new
 
-set = UserSettings()
 
-print(Settings.get_settings(set))
+
+user_settings = UserSettings()
+audio_settings = AudioRecordSettings()
+video_settings = ScreenRecordSettings()
+user_settings.load()
+audio_settings.load()
+video_settings.load()
+#DEBUG
+audio_settings.max_record_length = 120
+user_settings.deck = "test"

@@ -45,6 +45,7 @@ class Recorder:
         self.audio_file_index = 0
         self.max_rec_time = record_for_seconds
         self.stopped = False
+        self.elapsed_time = 0
 
     def get_audio_file_name(self, idx):
         return os.path.join(self.SAVE_DIRECTORY, f'out_{idx}.wav')
@@ -53,18 +54,14 @@ class Recorder:
         start_time = time.time()
         with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.SAMPLE_RATE) as mic:
             while True:
-                # record audio with loopback from default speaker.
                 print(f"Recording to file: out_{self.audio_file_index}.wav")
                 data = mic.record(numframes=self.SAMPLE_RATE*self.SEGMENT_DURATION)
                 cur_time = time.time()
-                # if silence_check(self, data): #checks for silent audio
-                #     print("No audio detected, stopping audio recording")
-                #     print(f"Index on stop: {self.audio_file_index}")
-                #     self.stopped = True
 
                 if cur_time - start_time > self.max_rec_time:
                     print("Max recording length reached")
                     print(f"Stopped at time {cur_time - start_time}s based on {self.max_rec_time}s")
+                    self.elapsed_time = cur_time - start_time
                     self.stopped = True
 
                 sf.write(file=self.get_audio_file_name(self.audio_file_index), data=data[:, 0], samplerate=self.SAMPLE_RATE)

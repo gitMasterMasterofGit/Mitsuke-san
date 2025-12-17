@@ -3,6 +3,8 @@ import keyboard._keyboard_event
 import numpy as np
 import time
 import ChromeUIHandler
+import os
+import Settings
 from DataClear import FileClear as fc
 from mss import mss
 
@@ -12,16 +14,32 @@ rect_start = None
 rect_end = None
 drawing = False
 
+def get_total_image_size():
+    i = 0
+    file_path = f"Images/img_{i}.jpg"
+    total = 0
+    while os.path.exists(file_path):
+        try:
+            file_size = os.path.getsize(file_path)
+            total += file_size
+        except FileNotFoundError:
+            print(f"Error: The file '{file_path}' was not found.")
+        except OSError as e:
+            print(f"Error accessing '{file_path}': {e}")
+        i += 1
+        file_path = f"Images/img_{i}.jpg"
+
+    return total
+
 class ImageCapture:
 
     def mouse_callback(self, event, x, y, flags, param):
         global rect_start, rect_end, drawing, start_img, temp_image
 
-        if event == None and drawing:
-            # Clear the temporary image and draw the updated rectangle
-            temp_image = start_img.copy()
-            cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
-            cv2.imshow("Draw Rectangle", temp_image)
+
+        temp_image = start_img.copy()
+        cv2.rectangle(temp_image, rect_start, rect_end, (0, 255, 0), 2)
+        cv2.imshow("Draw Rectangle", temp_image)
 
         if event == cv2.EVENT_LBUTTONDOWN:
             # When left mouse button is pressed, set the start point
@@ -95,7 +113,6 @@ class ImageCapture:
                 self.have_bounding_box = True
                 cv2.destroyAllWindows()
             
-            # Break the loop when 'q' is pressed
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
                 self.cancelled = True
@@ -103,19 +120,18 @@ class ImageCapture:
 
     def screenshot(self):
         with mss() as sct:
-            # Record screen
             sct_img = sct.grab(self.bounding_box)
             cv2.imwrite(f"Images/img_{self.im_count}.jpg", np.array(sct_img))
-
-            # debug
-            if self.im_count % 15 == 0:
-                print(f"Saved: img_{self.im_count}.jpg")
 
             self.im_count += 1
             time.sleep(0.1)
 
     def record_screen(self, audio_recorder):
+        loop = 0
         while True and not self.cancelled and not audio_recorder.stopped:
+            if loop % 3 == 0:
+                if get_total_image_size() >= Settings.video_settings.mem_limit * 1000000:
+                    break
             self.screenshot()
             time.sleep(self.CAPTURE_INTERVAL)
             
@@ -123,5 +139,6 @@ class ImageCapture:
             if keyboard.is_pressed('q'):
                 cv2.destroyAllWindows()
                 break
+            loop += 1
 
         print("Stopping screen recording")

@@ -49,7 +49,8 @@ def splitDebug(text):
             print(f"Overflow: {i}, {m}")
             for j in range(i, 0, -1):
                 if not hasdebug: print(f"Walk back: {j}, {tokenizer_obj.tokenize(text, mode)[j]}")
-                if tokenizer_obj.tokenize(text, mode)[j].surface() in JP.particles:
+                token = tokenizer_obj.tokenize(text, mode)[j].surface()
+                if token in JP.particles or token in JP.punctuation:
                     print(f"Break: {j}")
                     print("\n\n\n")
                     clipped_buffer = buffer[0:buffer_len_at[j]].strip()
@@ -86,7 +87,8 @@ def splitRun(text):
         
         if length >= MAX_LENGTH:
             for j in range(i, 0, -1):
-                if tokenizer_obj.tokenize(text, mode)[j].surface() in JP.particles:
+                token = tokenizer_obj.tokenize(text, mode)[j].surface()
+                if token in JP.particles or token in JP.punctuation:
                     if len(buffer) > 0: clipped_buffer = buffer[0:buffer_len_at[j]].strip() 
                     else: break
                     chunks.append(make_json(clipped_buffer, clipped_buffer[0], clipped_buffer[len(clipped_buffer) - 1], len(clipped_buffer)))
@@ -99,7 +101,4 @@ def splitRun(text):
     if buffer:
         chunks.append(make_json(buffer.strip(), buffer[0], buffer[len(buffer) - 1], length))
 
-    # for c in chunks:
-    #     print(c)
-    
     return chunks
