@@ -3,6 +3,7 @@ import json
 import shutil
 import time
 import random
+import re
 import soundfile as sf
 import JSONReq as JR
 import JPLangFeatures as JP
@@ -19,16 +20,6 @@ ANKI_CONNECT_URL = 'http://localhost:8765'
 ANKI_MEDIA_FOLDER = r"C:/Users/Oorra/AppData/Roaming/Anki2/User 1/collection.media/"
 
 current_deck_vocab = []
-
-def response_feedback(response):
-    if response.status_code == 200:
-        result = response.json()
-        if result.get('error'):
-            print(f"Error: {result['error']}")
-        else:
-            print(f"Success: {result['result']}")
-    else:
-        print(f"Failed to connect to AnkiConnect. Status code: {response.status_code}")
 
 def definition_string_clean(string):
     clean = ""
@@ -100,7 +91,7 @@ def parse_tokens(text):
 
 
 # Define the request to add a new note
-def add_note(deck_name, model_name, content, sentence, picture, audio): # content is a placeholder for all necessary card info
+def add_note(deck_name, model_name, content, sentence, picture, audio): 
     try:
         JR.invoke("addNote", {
                 'note': {

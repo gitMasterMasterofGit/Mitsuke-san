@@ -1,5 +1,5 @@
 #import requests
-import JSONReq as JR
+import app.host.JSONReq as JR
 import string
 import re
 

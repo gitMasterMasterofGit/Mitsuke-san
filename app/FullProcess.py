@@ -1,35 +1,14 @@
-from Record import Recorder
-from Transcribe import Transcriber
-from ScreenRecord import ImageCapture
-from DataClear import FileClear
-from Deck import Deck
-import Settings
-import Cards
+from app.host.Record import Recorder
+from app.container.Transcribe import Transcriber
+from app.host.ScreenRecord import ImageCapture
+from app.shared.DataClear import FileClear
+from app.host.Deck import Deck
+import app.shared.Settings as Settings
+import app.host.Cards as Cards
 import threading
 import time
-import ChromeUIHandler
 import queue
-
-# get soundcard to stop cluttering the terminal
-import warnings
-from soundcard import SoundcardRuntimeWarning
-warnings.simplefilter("ignore", SoundcardRuntimeWarning)
-
-class Queue:
-    def __init__(self):
-        self.vals = []
-
-    def add(self, val):
-        self.vals.append(val)
-
-    def get(self):
-        try:
-            return self.vals.pop(0)
-        except IndexError:
-            return None
-    
-    def fully_retreived(self):
-        return not self.vals
+import app.host.InputHandler as InputHandler
     
 DEBUG = True
 
@@ -40,7 +19,8 @@ aud_rec = Recorder(silence_thresh=10,
                    record_for_seconds=Settings.audio_settings.max_record_length, 
                    sample_rate=Settings.audio_settings.sample_rate,
                    segment_duration=Settings.audio_settings.segment_duration)
-trans = Transcriber(aud_rec)
+transcription_queue = queue.Queue()
+trans = Transcriber(transcription_queue)
 parser = Cards.Parser(deck)
 screen_rec = ImageCapture(capture_interval=Settings.video_settings.capture_interval)
 card_creator = Cards.CardCreator(deck, "JP Mining Note")
@@ -52,8 +32,10 @@ rec_thread.daemon = True
 screen_thread = threading.Thread(target=screen_rec.record_screen, args=(aud_rec,))
 screen_thread.daemon = True
 
-transcription_queue = queue.Queue()
-trans_thread = threading.Thread(target=trans.transcribe_audio, args=(transcription_queue, aud_rec))
+input_thread = threading.Thread(target=InputHandler.start)
+input_thread.daemon = True
+
+trans_thread = threading.Thread(target=trans.transcribe_audio)
 trans_thread.daemon = True
 
 def parse_only(f):
@@ -90,11 +72,18 @@ def main():
     start = time.time()
     
     try:
-        ChromeUIHandler.open_window("Chrome")
+        # url = input("Enter url: ")
+        # ChromeUIHandler.start(url=url)
+        input_thread.start()
+              
+        while not InputHandler.final_pressed('s'):
+            print("Not ready for screen rec")
+            time.sleep(.5)
+
         screen_rec.start()
-        
-        while not screen_rec.have_bounding_box:
-            print("No capture area")
+        # Pauses until capture area is defined and user has indicated they are ready to record
+        while not screen_rec.have_bounding_box or not InputHandler.final_pressed('v'):
+            print("Recording environment not ready")
             time.sleep(5)
 
         rec_thread.start()
@@ -104,12 +93,17 @@ def main():
 
         while True: # main transcription/parse loop
 
+            if InputHandler.final_pressed('q'):
+                aud_rec.stopped = True
+
             if not trans.finished:
                 fetch_and_parse()
 
             else:
 
                 while fetch_and_parse(): # blocking loop to finish parsing once transcriptions are done
+                    print("Parsing remaining transcriptions")
+                    time.sleep(.5)
                     pass
 
                 FileClear.clear("Images", "img", "jpg", debug=DEBUG)
