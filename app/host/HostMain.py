@@ -1,22 +1,52 @@
+import time
+import threading    
+import os
+import queue
+import app.shared.Settings as Settings
+import app.host.InputHandler as InputHandler
+import app.host.Cards as Cards
 from app.shared.DataClear import FileClear
 from app.host.Record import Recorder
 from app.host.ScreenRecord import ImageCapture
 from app.host.Deck import Deck
-import app.host.InputHandler as InputHandler
-import time
-import threading    
-import Settings
-import os
+
 
 DEBUG = True
 
 def write_flag(audio=True):
     try:
-        with open(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt", 'x') as file:
-            file.write("This file is exclusively created.")
+        with open(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt", 'x') as f:
+            f.write("This file is exclusively created.")
+            f.close()
     except FileExistsError:
         os.remove(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt")
         write_flag(audio)
+
+def read_shared_data():
+    out = None
+    with open("shared/data/transcriber_data.txt", "r") as f:
+        out = f.readlines() # [0] = finished, [1] = last_finished_idx, [2] = transcription
+        f.close()
+        return out
+
+def process_transcription(transcription, last_finished_idx):
+    print("Finding words...")    
+    for i in range(len(transcription["segments"])):   
+        found_words = parser.parse(transcription["segments"][i]["text"])
+        parser.get_times(transcription["segments"], last_finished_idx, i)
+        card_creator.create_cards_from_parse(found_words, parser)
+
+def fetch_and_parse(transcription, last_finished_idx):
+    try:
+        if transcription is not None:        
+            process_transcription(transcription, last_finished_idx)
+            print("Processing transcription")
+            return True
+        else:
+            print("No more transcriptions")
+            return False
+    except queue.Empty:
+        pass
 
 if os.path.exists("app/shared/flags/audio_ready.txt"):
     os.remove("app/shared/flags/audio_ready.txt")
@@ -31,6 +61,9 @@ aud_rec = Recorder(silence_thresh=10,
                    sample_rate=Settings.audio_settings.sample_rate,
                    segment_duration=Settings.audio_settings.segment_duration)
 screen_rec = ImageCapture(capture_interval=Settings.video_settings.capture_interval)
+parser = Cards.Parser(deck)
+card_creator = Cards.CardCreator(deck, "JP Mining Note")
+parse_idx = 0
 
 rec_thread = threading.Thread(target=aud_rec.record_audio)
 rec_thread.daemon = True
@@ -66,10 +99,28 @@ try:
         if not aud_rec.stopped:
             aud_rec.write_shared_data()
 
+        trans_finished, last_trans_idx, transcription = read_shared_data()
+
+        if not trans_finished:
+            fetch_and_parse(transcription, last_trans_idx)
+
+        else:
+
+            while fetch_and_parse(transcription, last_trans_idx): # blocking loop to finish parsing once transcriptions are done
+                print("Parsing remaining transcriptions")
+                time.sleep(.5)
+
+            FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
+            FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)
+            FileClear.clear("app/TranscriptionData", "trans", "json", debug=DEBUG)
+            FileClear.clear("app/TranscriptionData", "trans", "txt", debug=DEBUG)
+            break
+
 except(KeyboardInterrupt, SystemExit):
     print("Process ended")
     aud_rec.stopped = True
-    FileClear.clear("Images", "img", "jpg", debug=DEBUG)
-    FileClear.clear("AudioFiles", "out", "wav", debug=DEBUG)
-    FileClear.clear("TranscriptionData", "trans", "json", debug=DEBUG)
-    FileClear.clear("TranscriptionData", "trans", "txt", debug=DEBUG)
+    screen_rec.cancelled = True
+    FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
+    FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)
+    FileClear.clear("app/TranscriptionData", "trans", "json", debug=DEBUG)
+    FileClear.clear("app/TranscriptionData", "trans", "txt", debug=DEBUG)

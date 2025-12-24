@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # copy app code into container
-COPY /app/ .
+COPY /app/container .
 
 # install dependencies
 RUN pip install --no-cache-dir -r /app/requirements.txt

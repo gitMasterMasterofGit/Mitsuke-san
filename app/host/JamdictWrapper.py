@@ -1,7 +1,7 @@
 from jamdict import Jamdict
-import JPLangFeatures as JP
-import frequency
-from Deck import Deck
+import app.host.JPLangFeatures as JP
+import app.host.frequency as frequency
+from app.host.Deck import Deck
 
 jam = Jamdict()
 freq_dict = frequency.load()

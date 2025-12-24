@@ -47,6 +47,11 @@ class Recorder:
         self.stopped = False
         self.elapsed_time = 0
 
+    def write_shared_data(self):
+        with open("shared/data/audio_recorder_data.txt", "w") as f:
+            f.write(f"{self.audio_file_index}\n")
+            f.write(f"{self.stopped}\n")
+
     def get_audio_file_name(self, idx):
         return os.path.join(self.SAVE_DIRECTORY, f'out_{idx}.wav')
 

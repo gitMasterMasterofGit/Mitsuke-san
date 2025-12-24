@@ -1,5 +1,5 @@
 import pickle
-import JPLangFeatures as JP
+import app.host.JPLangFeatures as JP
 
 dictionary = {}
 with open("jmdict_hash.pkl", "rb") as f:

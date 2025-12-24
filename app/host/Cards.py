@@ -1,15 +1,13 @@
-import requests
 import json
 import shutil
 import time
 import random
-import re
 import soundfile as sf
-import JSONReq as JR
-import JPLangFeatures as JP
-import SentenceSplit
-import Settings
-import HashDict
+import app.host.JSONReq as JR
+import app.host.JPLangFeatures as JP
+import app.host.SentenceSplit as SentenceSplit
+import app.shared.Settings as Settings
+import app.host.HashDict as HashDict
 from sudachipy import tokenizer
 from sudachipy import dictionary
 
@@ -17,7 +15,7 @@ user_settings = Settings.UserSettings()
 user_settings.load()
 
 ANKI_CONNECT_URL = 'http://localhost:8765'
-ANKI_MEDIA_FOLDER = r"C:/Users/Oorra/AppData/Roaming/Anki2/User 1/collection.media/"
+ANKI_MEDIA_FOLDER = Settings.user_settings.ANKI_MEDIA_FOLDER
 
 current_deck_vocab = []
 

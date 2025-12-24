@@ -1,6 +1,6 @@
 from jamdict import Jamdict
-import HashDict
-import Deck
+import app.host.HashDict as HashDict
+import app.host.Deck as Deck
 import json
 
 jam = Jamdict()

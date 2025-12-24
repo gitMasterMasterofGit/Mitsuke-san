@@ -1,6 +1,6 @@
 from sudachipy import tokenizer
 from sudachipy import dictionary
-import JPLangFeatures as JP
+import app.host.JPLangFeatures as JP
 
 end_particles = {'。', '、', 'んです', 'ました', 'です', 'そうです', 'と', 'そして','した'}
 
