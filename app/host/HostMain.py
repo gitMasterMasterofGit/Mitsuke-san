@@ -2,6 +2,7 @@ import time
 import threading    
 import os
 import queue
+import json
 import app.shared.Settings as Settings
 import app.host.InputHandler as InputHandler
 import app.host.Cards as Cards
@@ -9,7 +10,6 @@ from app.shared.DataClear import FileClear
 from app.host.Record import Recorder
 from app.host.ScreenRecord import ImageCapture
 from app.host.Deck import Deck
-
 
 DEBUG = True
 
@@ -25,9 +25,14 @@ def write_flag(audio=True):
 def read_shared_data():
     out = None
     with open("shared/data/transcriber_data.txt", "r") as f:
-        out = f.readlines() # [0] = finished, [1] = last_finished_idx, [2] = transcription
+        out = f.readlines() 
         f.close()
-        return out
+    
+    with open("shared/data/transcription.json", "r") as f:
+        out.append(json.load(f))
+        f.close()
+
+    return out # [0] = finished, [1] = last_finished_idx, [2] = transcription
 
 def process_transcription(transcription, last_finished_idx):
     print("Finding words...")    
