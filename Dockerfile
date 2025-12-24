@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
 COPY /app/container .
 
 # install dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 #CMD ["python3", "ContainerMain.py"]
