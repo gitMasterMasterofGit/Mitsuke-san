@@ -44,16 +44,22 @@ class Transcriber:
             "segments": transcription["segments"]
         }
         
+    # TODO: Make sure this works and implement unique file per item
     def write_shared_data(self):
         with open("shared/data/transcriber_data.txt", "w") as f:
             f.write(f"{self.finished}\n")
             f.write(f"{self.last_finished_idx}\n")
             try:
+                item = self.transcription_queue.get(timeout=1)
+                if item is None:
+                    with open("shared/data/DONE.txt", "w", encoding="utf-8") as f:
+                        f.write("DONE")
+                        f.close()
+                    return
                 with open("shared/data/transcription.json", "w", encoding="utf-8") as f:
-                    json.dump(self.to_json(self.transcription_queue.get(timeout=1)), f, ensure_ascii=False)  
+                    json.dump(self.to_json(item), f, ensure_ascii=False)  
             except queue.Empty:
-                with open("shared/data/transcription.json", "w", encoding="utf-8") as f:
-                    json.dump({ "segments": "null" }, f, ensure_ascii=False)
+                pass
             f.close()
 
     def get_transcription_file_name(self, idx):

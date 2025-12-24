@@ -22,6 +22,7 @@ def write_flag(audio=True):
         os.remove(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt")
         write_flag(audio)
 
+# TODO: handle sentinel and read from unique file per item
 def read_shared_data():
     out = None
     with open("shared/data/transcriber_data.txt", "r") as f:
