@@ -3,7 +3,31 @@ import json
 import os
 import time
 import queue
+import torch
+import omegaconf
+import collections
+import pyannote.audio.core
 import app.container.AudioSeperator as AudioSeperator
+from pathlib import Path
+from matplotlib import typing
+
+torch.serialization.add_safe_globals([omegaconf.base.ContainerMetadata])
+torch.serialization.add_safe_globals([omegaconf.listconfig.ListConfig])
+torch.serialization.add_safe_globals([typing.Any])
+torch.serialization.add_safe_globals([list])
+torch.serialization.add_safe_globals([collections.defaultdict])
+torch.serialization.add_safe_globals([dict])
+torch.serialization.add_safe_globals([int])
+torch.serialization.add_safe_globals([omegaconf.nodes.AnyNode])
+torch.serialization.add_safe_globals([omegaconf.base.Metadata])
+torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
+torch.serialization.add_safe_globals([pyannote.audio.core.model.Introspection])
+torch.serialization.add_safe_globals([pyannote.audio.core.task.Specifications])
+torch.serialization.add_safe_globals([pyannote.audio.core.task.Problem])
+torch.serialization.add_safe_globals([pyannote.audio.core.task.Resolution])
+
+SHARED_DATA_PATH = Path("app/shared/data/transcriber_data")
+SHARED_DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 def save_transcription(f, t, transcription):
     json.dump(transcription["segments"], f, ensure_ascii=False, indent=4)
@@ -13,8 +37,15 @@ def save_transcription(f, t, transcription):
     except IndexError:
         print("Empty transcription")
 
+_counter = -1
+
+def next_filename():
+    global _counter
+    _counter += 1
+    return SHARED_DATA_PATH / f"trans_{_counter}.json"
+
 class Transcriber:
-    def __init__(self, queue, model_type="medium", save_directory="TranscriptionData", read_buffer=3):
+    def __init__(self, queue, model_type="medium", save_directory="app/TranscriptionData", read_buffer=3):
         self.SAVE_DIRECTORY = save_directory
         self.READ_BUFFER = read_buffer
         self.finished = False
@@ -23,44 +54,47 @@ class Transcriber:
         self.last_finished_idx = 0
         self.transcription_queue = queue
         print(f"Loading {model_type} model...")
-        self.model = whisperx.load_model(model_type, device="cuda", compute_type="int8")
+        self.model = whisperx.load_model(model_type, device="cuda", compute_type="float16")
         self.model_a, self.metadata = whisperx.load_align_model(
             language_code="ja", 
             device="cuda", 
-            model_name="vumichien/wav2vec2-xls-r-300m-japanese-large-ver2"
+            model_name="vumichien/wav2vec2-xls-r-300m-japanese-large-ver2", 
         )
         #WAV2VEC2_ASR_LARGE_LV60K_960H
         #"vumichien/wav2vec2-xls-r-1b-japanese" - good but too slow
         
     def read_shared_data(self):
         out = None
-        with open("shared/data/audio_recorder_data.txt", "r") as f:
+        with open("app/shared/data/audio_recorder_data.txt", "r") as f:
             out = f.readlines() # [0] = audio_file_index, [1] = stopped
             f.close()
-            return out
+            return int(out[0]), bool(out[1].strip())
         
     def to_json(self, transcription):
         return {
             "segments": transcription["segments"]
         }
+
+    def write_transcription(self):
+        try:
+            item = self.transcription_queue.get(timeout=1)
+            if item is None:
+                with open(SHARED_DATA_PATH / "DONE", "w", encoding="utf-8") as f:
+                    f.write("DONE")
+                    f.close()
+                return
+            with open(next_filename(), "w", encoding="utf-8") as f:
+                json.dump(self.to_json(item), f, ensure_ascii=False)  
+        except queue.Empty:
+            pass
         
     # TODO: Make sure this works and implement unique file per item
     def write_shared_data(self):
-        with open("shared/data/transcriber_data.txt", "w") as f:
+        with open("app/shared/data/transcriber_data.txt", "w") as f:
             f.write(f"{self.finished}\n")
             f.write(f"{self.last_finished_idx}\n")
-            try:
-                item = self.transcription_queue.get(timeout=1)
-                if item is None:
-                    with open("shared/data/DONE.txt", "w", encoding="utf-8") as f:
-                        f.write("DONE")
-                        f.close()
-                    return
-                with open("shared/data/transcription.json", "w", encoding="utf-8") as f:
-                    json.dump(self.to_json(item), f, ensure_ascii=False)  
-            except queue.Empty:
-                pass
             f.close()
+        self.write_transcription()
 
     def get_transcription_file_name(self, idx):
         return {"json": os.path.join(self.SAVE_DIRECTORY, f"trans_{idx}.json"), "txt": os.path.join(self.SAVE_DIRECTORY, f"trans_{idx}.txt")}
@@ -74,11 +108,11 @@ class Transcriber:
         try:
             while not self.finished:
                 audio_file_index, audio_stopped = self.read_shared_data()
-                if idx < audio_file_index or not audio_stopped:
+                if idx < audio_file_index:
                     print(f"Transcrbing: out_{idx}.wav")
                     #AudioSeperator.separate_audio(f"AudioFiles/out_{idx}.wav")
                     #clean_audio = AudioSeperator.get_vocals_track(f"out_{idx}")
-                    audio = whisperx.load_audio(f"AudioFiles/out_{idx}.wav")
+                    audio = whisperx.load_audio(f"app/AudioFiles/out_{idx}.wav")
                     self.transcription = self.model.transcribe(audio, batch_size=16)
                     self.has_new = True
 
@@ -103,6 +137,9 @@ class Transcriber:
                     self.last_finished_idx = idx
                     self.write_shared_data()
                     idx += 1
+
+                elif not audio_stopped:
+                    time.sleep(1) # wait for more audio files
 
                 else:
                     self.finished = True

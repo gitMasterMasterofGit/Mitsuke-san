@@ -37,7 +37,7 @@ def silence_check(recorder, data, count_start=False): # could possibly be combin
         return False
 
 class Recorder:
-    def __init__(self, save_directory="AudioFiles", sample_rate=48000, segment_duration=30, silence_thresh=3, record_for_seconds=math.inf):
+    def __init__(self, save_directory="app/AudioFiles", sample_rate=48000, segment_duration=30, silence_thresh=3, record_for_seconds=math.inf):
         self.SAVE_DIRECTORY = save_directory
         self.SAMPLE_RATE = sample_rate           
         self.SEGMENT_DURATION = segment_duration
@@ -48,7 +48,7 @@ class Recorder:
         self.elapsed_time = 0
 
     def write_shared_data(self):
-        with open("shared/data/audio_recorder_data.txt", "w") as f:
+        with open("app/shared/data/audio_recorder_data.txt", "w") as f:
             f.write(f"{self.audio_file_index}\n")
             f.write(f"{self.stopped}\n")
 

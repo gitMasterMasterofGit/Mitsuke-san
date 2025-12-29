@@ -37,8 +37,10 @@ def focus_window(title):
         try:
             windows[0].activate()  # Bring window to the front
             print(f"[+] Focused: {title}")
+            time.sleep(1) 
         except Exception:
             print("Somethin's buggin")
+            time.sleep(1) 
     else:
         print(f"[!] Window not found: {title}")
 
@@ -132,7 +134,7 @@ class ImageCapture:
     def screenshot(self):
         with mss() as sct:
             sct_img = sct.grab(self.bounding_box)
-            cv2.imwrite(f"Images/img_{self.im_count}.jpg", np.array(sct_img))
+            cv2.imwrite(f"app/Images/img_{self.im_count}.jpg", np.array(sct_img))
 
             self.im_count += 1
             time.sleep(0.1)

@@ -15,7 +15,7 @@ class Settings():
 
     def save(self):
         new_settings = self.get_settings()
-        with open("CONFIG.json", 'r') as file:
+        with open("app/shared/CONFIG.json", 'r') as file:
             data = json.load(file)
 
             for setting in data["settings"]:
@@ -24,11 +24,11 @@ class Settings():
                         setting[option] = new_settings[0][option]
                     break
 
-        with open('CONFIG.json', 'w') as file:
+        with open("app/shared/CONFIG.json", 'w') as file:
             json.dump(data, file, indent=4)
 
     def load(self):
-        with open("CONFIG.json", 'r') as file:
+        with open("app/shared/CONFIG.json", 'r') as file:
             data = json.load(file)
 
             for setting in data["settings"]:
@@ -143,8 +143,6 @@ class ScreenRecordSettings(Settings):
         # new will be passed in mb
         if new > 0 and new <= 1024:
             self._mem_limit = new
-
-
 
 user_settings = UserSettings()
 audio_settings = AudioRecordSettings()

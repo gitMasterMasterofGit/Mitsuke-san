@@ -20,3 +20,6 @@ test4.py
 dock.txt
 requirements_full.txt
 freq_gen.py
+venv_activate.txt
+app/shared/data/audio_recorder_data.txt
+app/shared/data/transcriber_data.txt

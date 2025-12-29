@@ -1,17 +1,25 @@
 import time
 import threading    
 import os
-import queue
 import json
+import subprocess
 import app.shared.Settings as Settings
 import app.host.InputHandler as InputHandler
 import app.host.Cards as Cards
+from pathlib import Path
 from app.shared.DataClear import FileClear
 from app.host.Record import Recorder
 from app.host.ScreenRecord import ImageCapture
 from app.host.Deck import Deck
 
+# get soundcard to stop cluttering the terminal
+import warnings
+from soundcard import SoundcardRuntimeWarning
+warnings.simplefilter("ignore", SoundcardRuntimeWarning)
+
 DEBUG = True
+
+SHARED_DATA_PATH = Path("shared/data/transcriber_data")
 
 def write_flag(audio=True):
     try:
@@ -22,18 +30,28 @@ def write_flag(audio=True):
         os.remove(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt")
         write_flag(audio)
 
+_trans_idx = 0
+
+def read_transcription():
+    global _trans_idx
+    files = SHARED_DATA_PATH.glob("trans_*.json")
+
+    for f in files:
+        with open(f, "r") as file:
+            transcription = json.load(file)
+        
+        fetch_and_parse(transcription, _trans_idx)
+        f.unlink()
+        _trans_idx += 1
+
 # TODO: handle sentinel and read from unique file per item
 def read_shared_data():
     out = None
-    with open("shared/data/transcriber_data.txt", "r") as f:
+    with open("app/shared/data/transcriber_data.txt", "r") as f:
         out = f.readlines() 
         f.close()
-    
-    with open("shared/data/transcription.json", "r") as f:
-        out.append(json.load(f))
-        f.close()
 
-    return out # [0] = finished, [1] = last_finished_idx, [2] = transcription
+    return out # [0] = finished, [1] = last_finished_idx
 
 def process_transcription(transcription, last_finished_idx):
     print("Finding words...")    
@@ -43,16 +61,13 @@ def process_transcription(transcription, last_finished_idx):
         card_creator.create_cards_from_parse(found_words, parser)
 
 def fetch_and_parse(transcription, last_finished_idx):
-    try:
-        if transcription is not None:        
-            process_transcription(transcription, last_finished_idx)
-            print("Processing transcription")
-            return True
-        else:
-            print("No more transcriptions")
-            return False
-    except queue.Empty:
-        pass
+    if transcription is not None:        
+        process_transcription(transcription, last_finished_idx)
+        print("Processing transcription")
+        return True
+    else:
+        print("No more transcriptions")
+        return False
 
 if os.path.exists("app/shared/flags/audio_ready.txt"):
     os.remove("app/shared/flags/audio_ready.txt")
@@ -84,19 +99,23 @@ input_thread.start()
 
 try:    
     while not InputHandler.final_pressed('s'):
-        print("Not ready for screen rec")
+        print("Not ready for screen rec (s)")
         time.sleep(.5)
 
     screen_rec.start()
     # Pauses until capture area is defined and user has indicated they are ready to record
     while not screen_rec.have_bounding_box or not InputHandler.final_pressed('v'):
-        print("Recording environment not ready")
+        print("Recording environment not ready (v)")
         time.sleep(5)
 
     rec_thread.start()
     screen_thread.start()
     write_flag(audio=True)
     write_flag(audio=False)
+
+    subprocess.run([
+        "docker", "run", "--gpus", "all", "-it", "mitsuke-backend", "bash"
+    ])
 
     while True:
         if InputHandler.final_pressed('q'):
@@ -105,16 +124,15 @@ try:
         if not aud_rec.stopped:
             aud_rec.write_shared_data()
 
-        trans_finished, last_trans_idx, transcription = read_shared_data()
+        trans_finished, last_trans_idx = read_shared_data()
 
         if not trans_finished:
-            fetch_and_parse(transcription, last_trans_idx)
+            read_transcription()
 
         else:
 
-            while fetch_and_parse(transcription, last_trans_idx): # blocking loop to finish parsing once transcriptions are done
-                print("Parsing remaining transcriptions")
-                time.sleep(.5)
+            print("Parsing remaining transcriptions")
+            read_transcription() # blocking loop to finish parsing once transcriptions are done
 
             FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
             FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)
@@ -126,6 +144,9 @@ except(KeyboardInterrupt, SystemExit):
     print("Process ended")
     aud_rec.stopped = True
     screen_rec.cancelled = True
+    subprocess.run([
+        "docker", "stop", "mitsuke-backend"
+    ])
     FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
     FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)
     FileClear.clear("app/TranscriptionData", "trans", "json", debug=DEBUG)

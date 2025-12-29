@@ -2,7 +2,7 @@ import pickle
 import app.host.JPLangFeatures as JP
 
 dictionary = {}
-with open("jmdict_hash.pkl", "rb") as f:
+with open("app/host/jmdict_hash.pkl", "rb") as f:
     dictionary = pickle.load(f)
 
 def lookup(deck, target, detailed_definition=False):
