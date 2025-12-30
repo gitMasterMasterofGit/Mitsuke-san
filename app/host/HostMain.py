@@ -97,6 +97,11 @@ input_thread.daemon = True
 
 input_thread.start()
 
+# TEST
+AUDIO_DIR = Path("C:/Users/Oorra/Mitsuke-san/app/shared/jobs/in")
+OUT_DIR = Path("C:/Users/Oorra/Mitsuke-san/app/shared/jobs/out")
+
+
 try:    
     while not InputHandler.final_pressed('s'):
         print("Not ready for screen rec (s)")
@@ -110,29 +115,44 @@ try:
 
     rec_thread.start()
     screen_thread.start()
-    write_flag(audio=True)
-    write_flag(audio=False)
+    # write_flag(audio=True)
+    # write_flag(audio=False)
 
-    subprocess.run([
-        "docker", "run", "--gpus", "all", "-it", "mitsuke-backend", "bash"
-    ])
+    # subprocess.run([
+    #     "docker", "run", "--gpus", "all", "-it", "mitsuke-backend"
+    # ])
 
     while True:
         if InputHandler.final_pressed('q'):
             aud_rec.stopped = True
 
         if not aud_rec.stopped:
-            aud_rec.write_shared_data()
+            # aud_rec.write_shared_data()
+            if not Path(AUDIO_DIR / f"{aud_rec.audio_file_index}.wav").exists():
+                time.sleep(1)
+                continue
+            else:
+                print("Calling transcription")
+                subprocess.run([
+                "docker", "run", "--rm", "-it", "--gpus", "all",
+                "-v", f"{AUDIO_DIR}:/jobs/in",       # mount host input dir to container
+                "-v", f"{OUT_DIR}:/jobs/out",        # mount host output dir to container
+                "mitsuke-new",                      
+                "python", "-m", "container.TranscriptionInstance",
+                f"shared/jobs/in/{aud_rec.audio_file_index}.wav"        # pass the file path inside container
+            ], check=True)
+                
+        # TODO: read transcription data from shared file
 
-        trans_finished, last_trans_idx = read_shared_data()
+        # trans_finished, last_trans_idx = read_shared_data()
 
-        if not trans_finished:
-            read_transcription()
+        # if not trans_finished:
+        #     read_transcription()
 
         else:
 
-            print("Parsing remaining transcriptions")
-            read_transcription() # blocking loop to finish parsing once transcriptions are done
+            # print("Parsing remaining transcriptions")
+            # read_transcription() # blocking loop to finish parsing once transcriptions are done
 
             FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
             FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)

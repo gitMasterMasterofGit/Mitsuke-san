@@ -52,6 +52,9 @@ class Recorder:
             f.write(f"{self.audio_file_index}\n")
             f.write(f"{self.stopped}\n")
 
+    def write_test(self, audio, name="audio"):
+        sf.write(file=f"app/shared/jobs/in/{name}.wav", data=audio, samplerate=self.SAMPLE_RATE)
+
     def get_audio_file_name(self, idx):
         return os.path.join(self.SAVE_DIRECTORY, f'out_{idx}.wav')
 
@@ -71,6 +74,7 @@ class Recorder:
                     self.stopped = True
 
                 sf.write(file=self.get_audio_file_name(self.audio_file_index), data=data[:, 0], samplerate=self.SAMPLE_RATE)
+                self.write_test(data[:, 0], name=str(self.audio_file_index))
                 print(f"Saved: out_{self.audio_file_index}.wav")
                 if not self.stopped: # prevents transcriber from trying to read non-existent audio files
                     self.audio_file_index += 1

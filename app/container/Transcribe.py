@@ -3,28 +3,9 @@ import json
 import os
 import time
 import queue
-import torch
-import omegaconf
-import collections
-import pyannote.audio.core
-import app.container.AudioSeperator as AudioSeperator
+import container.AudioSeperator as AudioSeperator
 from pathlib import Path
 from matplotlib import typing
-
-torch.serialization.add_safe_globals([omegaconf.base.ContainerMetadata])
-torch.serialization.add_safe_globals([omegaconf.listconfig.ListConfig])
-torch.serialization.add_safe_globals([typing.Any])
-torch.serialization.add_safe_globals([list])
-torch.serialization.add_safe_globals([collections.defaultdict])
-torch.serialization.add_safe_globals([dict])
-torch.serialization.add_safe_globals([int])
-torch.serialization.add_safe_globals([omegaconf.nodes.AnyNode])
-torch.serialization.add_safe_globals([omegaconf.base.Metadata])
-torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
-torch.serialization.add_safe_globals([pyannote.audio.core.model.Introspection])
-torch.serialization.add_safe_globals([pyannote.audio.core.task.Specifications])
-torch.serialization.add_safe_globals([pyannote.audio.core.task.Problem])
-torch.serialization.add_safe_globals([pyannote.audio.core.task.Resolution])
 
 SHARED_DATA_PATH = Path("app/shared/data/transcriber_data")
 SHARED_DATA_PATH.mkdir(parents=True, exist_ok=True)
@@ -150,3 +131,20 @@ class Transcriber:
         except RuntimeError:
             print("File not found")
             time.sleep(5)
+
+    def transcribe(self, wav_path: Path):
+        print(f"Transcribing: {wav_path.name}")
+        audio = whisperx.load_audio(str(wav_path))
+        transcription = self.model.transcribe(audio, batch_size=16)
+
+        transcription = whisperx.align(
+            transcription["segments"], 
+            self.model_a, 
+            self.metadata, 
+            audio, 
+            device="cuda", 
+            return_char_alignments=False
+        )
+
+        print(f"Finished transcription: {wav_path.name}")
+        return transcription
