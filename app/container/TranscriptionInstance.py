@@ -1,4 +1,4 @@
-import sys, json, queue
+import sys, json, queue, time, os
 import container.AddGlobals
 import warnings
 from pathlib import Path
@@ -7,17 +7,26 @@ from container.Transcribe import Transcriber
 warnings.filterwarnings('ignore')
 container.AddGlobals.add_globals()
 
-AUDIO_PATH = Path(sys.argv[1])
+print("Konnichiwamasu")
+
 OUT_DIR = Path("/jobs/out")
-OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 trans = Transcriber(queue.Queue())
 
-result = trans.transcribe(AUDIO_PATH)
+IN_DIR = Path("/jobs/in")
+idx = 0
+while True:
+    if not os.path.exists(Path(IN_DIR / f"out_{idx}.wav")):
+        print(f"File out_{idx}.wav not found, waiting...")
+        time.sleep(5)
+        continue
+    else:
+        result = trans.transcribe(f"/jobs/in/out_{idx}.wav")
+        out_file = OUT_DIR / (f"out_{idx}.json")
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(trans.to_json(result), f, ensure_ascii=False)
+        idx += 1
+    if os.path.exists("/jobs/in/DONE"):
+        print("DONE file found, exiting.")
+        break
 
-out_file = OUT_DIR / (AUDIO_PATH.stem + ".json")
-with open(out_file, "w", encoding="utf-8") as f:
-    json.dump(trans.to_json(result), f, ensure_ascii=False)
-
-AUDIO_PATH.unlink()
-print(f"Wrote {out_file}")

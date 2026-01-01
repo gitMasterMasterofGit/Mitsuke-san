@@ -19,55 +19,39 @@ warnings.simplefilter("ignore", SoundcardRuntimeWarning)
 
 DEBUG = True
 
-SHARED_DATA_PATH = Path("shared/data/transcriber_data")
+BASE_DIR = Path(os.path.dirname(os.path.abspath("app/")))
+IN_DIR = Path(BASE_DIR / "app/shared/jobs/in")
+OUT_DIR = Path(BASE_DIR / "app/shared/jobs/out")
 
-def write_flag(audio=True):
-    try:
-        with open(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt", 'x') as f:
-            f.write("This file is exclusively created.")
-            f.close()
-    except FileExistsError:
-        os.remove(f"app/shared/flags/{'audio_ready' if audio else 'video_ready'}.txt")
-        write_flag(audio)
-
-_trans_idx = 0
-
-def read_transcription():
-    global _trans_idx
-    files = SHARED_DATA_PATH.glob("trans_*.json")
-
-    for f in files:
-        with open(f, "r") as file:
-            transcription = json.load(file)
-        
-        fetch_and_parse(transcription, _trans_idx)
-        f.unlink()
-        _trans_idx += 1
-
-# TODO: handle sentinel and read from unique file per item
-def read_shared_data():
-    out = None
-    with open("app/shared/data/transcriber_data.txt", "r") as f:
-        out = f.readlines() 
-        f.close()
-
-    return out # [0] = finished, [1] = last_finished_idx
-
-def process_transcription(transcription, last_finished_idx):
+def process_transcription(transcription, file_idx):
     print("Finding words...")    
     for i in range(len(transcription["segments"])):   
         found_words = parser.parse(transcription["segments"][i]["text"])
-        parser.get_times(transcription["segments"], last_finished_idx, i)
+        parser.get_times(transcription["segments"], file_idx, i)
         card_creator.create_cards_from_parse(found_words, parser)
 
-def fetch_and_parse(transcription, last_finished_idx):
+def fetch_and_parse(transcription, file_idx):
     if transcription is not None:        
-        process_transcription(transcription, last_finished_idx)
+        process_transcription(transcription, file_idx)
         print("Processing transcription")
         return True
     else:
         print("No more transcriptions")
         return False
+    
+def call_docker():
+    container_dir = os.path.join(BASE_DIR, "app", "container")
+    assert os.path.isdir(IN_DIR), IN_DIR
+    assert os.path.isdir(OUT_DIR), OUT_DIR
+    cmd = [
+        "docker", "run", "--rm", "--gpus", "all",
+        "-v", f"{IN_DIR}:/jobs/in",
+        "-v", f"{OUT_DIR}:/jobs/out",
+        "-v", f"{container_dir}:/app/container", # debug for easy code updates
+        "mitsuke-backend"
+    ]
+
+    subprocess.run(cmd, check=True)
 
 if os.path.exists("app/shared/flags/audio_ready.txt"):
     os.remove("app/shared/flags/audio_ready.txt")
@@ -86,6 +70,8 @@ parser = Cards.Parser(deck)
 card_creator = Cards.CardCreator(deck, "JP Mining Note")
 parse_idx = 0
 
+docker_thread = threading.Thread(target=call_docker)
+
 rec_thread = threading.Thread(target=aud_rec.record_audio)
 rec_thread.daemon = True
 
@@ -96,11 +82,6 @@ input_thread = threading.Thread(target=InputHandler.start)
 input_thread.daemon = True
 
 input_thread.start()
-
-# TEST
-AUDIO_DIR = Path("C:/Users/Oorra/Mitsuke-san/app/shared/jobs/in")
-OUT_DIR = Path("C:/Users/Oorra/Mitsuke-san/app/shared/jobs/out")
-
 
 try:    
     while not InputHandler.final_pressed('s'):
@@ -113,51 +94,32 @@ try:
         print("Recording environment not ready (v)")
         time.sleep(5)
 
+    docker_thread.start()
     rec_thread.start()
     screen_thread.start()
-    # write_flag(audio=True)
-    # write_flag(audio=False)
 
-    # subprocess.run([
-    #     "docker", "run", "--gpus", "all", "-it", "mitsuke-backend"
-    # ])
+    time.sleep(aud_rec.SEGMENT_DURATION + 1) # wait to ensure at least one file has been created
+
+    transcription_idx = 0
 
     while True:
         if InputHandler.final_pressed('q'):
             aud_rec.stopped = True
 
-        if not aud_rec.stopped:
-            # aud_rec.write_shared_data()
-            if not Path(AUDIO_DIR / f"{aud_rec.audio_file_index}.wav").exists():
-                time.sleep(1)
-                continue
+        if not transcription_idx > aud_rec.audio_file_index:
+            if not os.path.exists(Path(OUT_DIR / f"out_{transcription_idx}.json")):
+                print(f"Could not find transcription out_{transcription_idx}.json, waiting...")
+                time.sleep(5)
             else:
-                print("Calling transcription")
-                subprocess.run([
-                "docker", "run", "--rm", "-it", "--gpus", "all",
-                "-v", f"{AUDIO_DIR}:/jobs/in",       # mount host input dir to container
-                "-v", f"{OUT_DIR}:/jobs/out",        # mount host output dir to container
-                "mitsuke-new",                      
-                "python", "-m", "container.TranscriptionInstance",
-                f"shared/jobs/in/{aud_rec.audio_file_index}.wav"        # pass the file path inside container
-            ], check=True)
-                
-        # TODO: read transcription data from shared file
-
-        # trans_finished, last_trans_idx = read_shared_data()
-
-        # if not trans_finished:
-        #     read_transcription()
+                print(f"Processing transcription out_{transcription_idx}.json")
+                fetch_and_parse(
+                    json.load(open(Path(OUT_DIR / f"out_{transcription_idx}.json"), "r", encoding="utf-8"))
+                    , transcription_idx
+                )
+                transcription_idx += 1
 
         else:
-
-            # print("Parsing remaining transcriptions")
-            # read_transcription() # blocking loop to finish parsing once transcriptions are done
-
-            FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
-            FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)
-            FileClear.clear("app/TranscriptionData", "trans", "json", debug=DEBUG)
-            FileClear.clear("app/TranscriptionData", "trans", "txt", debug=DEBUG)
+            FileClear.clear_all(debug=DEBUG)
             break
 
 except(KeyboardInterrupt, SystemExit):
@@ -167,7 +129,4 @@ except(KeyboardInterrupt, SystemExit):
     subprocess.run([
         "docker", "stop", "mitsuke-backend"
     ])
-    FileClear.clear("app/Images", "img", "jpg", debug=DEBUG)
-    FileClear.clear("app/AudioFiles", "out", "wav", debug=DEBUG)
-    FileClear.clear("app/TranscriptionData", "trans", "json", debug=DEBUG)
-    FileClear.clear("app/TranscriptionData", "trans", "txt", debug=DEBUG)
+    FileClear.clear_all(debug=DEBUG)

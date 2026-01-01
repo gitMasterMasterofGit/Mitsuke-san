@@ -29,7 +29,5 @@ def start():
         elif key.name == READY_TO_CAPTURE:
             cap_ready = True
             print("Ready for screen capture")
-        else:
-            print(user_ready)
 
     keyboard.hook(on_key)

@@ -7,9 +7,6 @@ import container.AudioSeperator as AudioSeperator
 from pathlib import Path
 from matplotlib import typing
 
-SHARED_DATA_PATH = Path("app/shared/data/transcriber_data")
-SHARED_DATA_PATH.mkdir(parents=True, exist_ok=True)
-
 def save_transcription(f, t, transcription):
     json.dump(transcription["segments"], f, ensure_ascii=False, indent=4)
     try:
@@ -17,13 +14,6 @@ def save_transcription(f, t, transcription):
         print("Saved transcriptions")
     except IndexError:
         print("Empty transcription")
-
-_counter = -1
-
-def next_filename():
-    global _counter
-    _counter += 1
-    return SHARED_DATA_PATH / f"trans_{_counter}.json"
 
 class Transcriber:
     def __init__(self, queue, model_type="medium", save_directory="app/TranscriptionData", read_buffer=3):
@@ -55,19 +45,6 @@ class Transcriber:
         return {
             "segments": transcription["segments"]
         }
-
-    def write_transcription(self):
-        try:
-            item = self.transcription_queue.get(timeout=1)
-            if item is None:
-                with open(SHARED_DATA_PATH / "DONE", "w", encoding="utf-8") as f:
-                    f.write("DONE")
-                    f.close()
-                return
-            with open(next_filename(), "w", encoding="utf-8") as f:
-                json.dump(self.to_json(item), f, ensure_ascii=False)  
-        except queue.Empty:
-            pass
         
     # TODO: Make sure this works and implement unique file per item
     def write_shared_data(self):
@@ -132,9 +109,9 @@ class Transcriber:
             print("File not found")
             time.sleep(5)
 
-    def transcribe(self, wav_path: Path):
-        print(f"Transcribing: {wav_path.name}")
-        audio = whisperx.load_audio(str(wav_path))
+    def transcribe(self, wav_path):
+        print(f"Transcribing: {wav_path}")
+        audio = whisperx.load_audio(wav_path)
         transcription = self.model.transcribe(audio, batch_size=16)
 
         transcription = whisperx.align(
@@ -146,5 +123,5 @@ class Transcriber:
             return_char_alignments=False
         )
 
-        print(f"Finished transcription: {wav_path.name}")
+        print(f"Finished transcription: {wav_path}")
         return transcription

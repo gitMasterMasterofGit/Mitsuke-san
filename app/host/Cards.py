@@ -141,7 +141,6 @@ def save_note(deck_name, model_name, content, sentence, picture, audio):
                     }
                 })
 
-
 class Parser:
     def __init__(self, deck):
         self.found_words = []
@@ -151,6 +150,9 @@ class Parser:
         self.deck = deck
         self.current_audio_session_UID = 0
     
+    # finds new words in given text segment and adds them
+    # to the found words for the current session (found_words)
+    # and the current deck's vocab list (current_deck_vocab)
     def parse(self, text):
         for word in parse_tokens(text):
             dict_entry = HashDict.lookup(self.deck, word, detailed_definition=True)
@@ -161,22 +163,26 @@ class Parser:
         
         return self.found_words
     
+    # stores whisperx segment data later used for fetching
+    # corresponding images and audio clips for Anki cards.
+    # these searches are based on the time in which a given word
+    # appeared, hence the name "times" 
     def get_times(self, transcription, file_idx, segment_idx):
         self.times.append([transcription[segment_idx]["text"], (transcription[segment_idx]["start"], transcription[segment_idx]["end"]), file_idx])
 
+    # returns the sentence (or sentence fragment) the given word is from
     def find_sentence(self, word_idx, word):
         split_sen = SentenceSplit.split(self.times[word_idx][0]) # sentence the word came from
         for sen in split_sen:
             if word["word"] in sen["sentence"]: return sen["sentence"]
             
     def find_image(self, word_idx):
-        SOURCE_PATH = r"./Images/"
+        SOURCE_PATH = r"app/Images/"
         DEST_PATH = ANKI_MEDIA_FOLDER
-        #debug = word["word"]
+       
         img_idx = int((self.times[word_idx][2] * Settings.audio_settings.segment_duration) + 
                         random.uniform(self.times[word_idx][1][0], self.times[word_idx][1][1]) / # takes random part from sentence to source image from
                         Settings.video_settings.capture_interval)
-        #print(f"word: {debug}\nimg idx: {img_idx}")
         time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
 
         # move image to proper directory
@@ -188,7 +194,7 @@ class Parser:
         
         return name 
             
-    def get_audio(self, word_idx, word):
+    def find_audio(self, word_idx, word):
         DEST_PATH = ANKI_MEDIA_FOLDER
         BUFFER = 0.25 # seconds
         target_sen = None
@@ -203,9 +209,9 @@ class Parser:
                 print("Sen length: ", target_sen["length"])
                 time_id = f"{time.localtime()[1]}_{time.localtime()[2]}_{time.localtime()[0]}_{time.localtime()[3]}_{time.localtime()[4]}_{time.localtime()[5]}"
                 try:
-                    with open(f'TranscriptionData/trans_{self.times[word_idx][2]}.json', 'r', encoding='utf-8') as file:
+                    with open(f'app/shared/jobs/out/out_{self.times[word_idx][2]}.json', 'r', encoding='utf-8') as file:
                         data = json.load(file)
-                        words = data[0]["words"]
+                        words = data["segments"][0]["words"]
                         print("Words len: ", len(words))
                         print("Len track: ", len_track)
                         start_time = words[len_track]["start"]
@@ -228,7 +234,7 @@ class Parser:
                         print(f"out_{self.times[word_idx][2]}.wav")
 
                         # record from temp audio file
-                        data, samplerate = sf.read(f"AudioFiles/out_{self.times[word_idx][2]}.wav")
+                        data, samplerate = sf.read(f"app/shared/jobs/in/out_{self.times[word_idx][2]}.wav")
 
                         # record sentence audio
                         start = int(start_time * samplerate) - int(BUFFER * samplerate)
@@ -267,9 +273,5 @@ class CardCreator:
                 text_tokens = parse_tokens(parser.times[i][0])
                 if word["word"] in text_tokens:
                     add_note(self.deck_name, self.model_name, word, 
-                     parser.find_sentence(i, word), parser.find_image(i), parser.get_audio(i, word))
-        # random.shuffle(notes)
-        # for card in notes:
-        #     add_note(card)
-        # notes.clear()
+                     parser.find_sentence(i, word), parser.find_image(i), parser.find_audio(i, word))
         self.finished = True

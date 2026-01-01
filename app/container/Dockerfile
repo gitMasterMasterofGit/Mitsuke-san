@@ -18,14 +18,16 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Copy code
 COPY app/ .
 
+ENV PYTHONPATH=/app
+
 # Pre-download models load with CPU to avoid CUDA versions errors during build
 # Create safe globals to avoid pickle errors
 RUN python - <<EOF
 import whisperx
 import torch
+import collections
 import omegaconf
 import typing
-import collections
 import pyannote.audio.core
 torch.serialization.add_safe_globals([omegaconf.base.ContainerMetadata])
 torch.serialization.add_safe_globals([omegaconf.listconfig.ListConfig])
@@ -41,7 +43,6 @@ torch.serialization.add_safe_globals([pyannote.audio.core.model.Introspection])
 torch.serialization.add_safe_globals([pyannote.audio.core.task.Specifications])
 torch.serialization.add_safe_globals([pyannote.audio.core.task.Problem])
 torch.serialization.add_safe_globals([pyannote.audio.core.task.Resolution])
-
 whisperx.load_model("medium", device="cpu", compute_type="float32")
 whisperx.load_align_model(
     language_code="ja",
@@ -50,6 +51,4 @@ whisperx.load_align_model(
 )
 EOF
 
-ENV PYTHONPATH=/app
-
-CMD ["python", "-m", "container.ContainerMain"]
+CMD ["python", "-m", "container.TranscriptionInstance"]
