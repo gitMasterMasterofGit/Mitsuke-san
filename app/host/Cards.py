@@ -6,7 +6,7 @@ import soundfile as sf
 import app.host.JSONReq as JR
 import app.host.JPLangFeatures as JP
 import app.host.SentenceSplit as SentenceSplit
-import app.shared.Settings as Settings
+import app.host.Settings as Settings
 import app.host.HashDict as HashDict
 from sudachipy import tokenizer
 from sudachipy import dictionary

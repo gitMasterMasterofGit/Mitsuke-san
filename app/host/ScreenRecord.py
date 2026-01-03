@@ -3,7 +3,7 @@ import keyboard._keyboard_event
 import time
 import os
 import numpy as np
-import app.shared.Settings as Settings
+import app.host.Settings as Settings
 import pygetwindow as gw
 from app.shared.DataClear import FileClear as fc
 from mss import mss

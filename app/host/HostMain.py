@@ -3,7 +3,7 @@ import threading
 import os
 import json
 import subprocess
-import app.shared.Settings as Settings
+import app.host.Settings as Settings
 import app.host.InputHandler as InputHandler
 import app.host.Cards as Cards
 from pathlib import Path
@@ -17,7 +17,7 @@ import warnings
 from soundcard import SoundcardRuntimeWarning
 warnings.simplefilter("ignore", SoundcardRuntimeWarning)
 
-DEBUG = True
+DEBUG = False
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath("app/")))
 IN_DIR = Path(BASE_DIR / "app/shared/jobs/in")
@@ -61,8 +61,7 @@ if os.path.exists("app/shared/flags/video_ready.txt"):
 deck = Deck("test")
 deck.clear()
 deck.create_deck()
-aud_rec = Recorder(silence_thresh=10, 
-                   record_for_seconds=Settings.audio_settings.max_record_length, 
+aud_rec = Recorder(record_for_seconds=Settings.audio_settings.max_record_length, 
                    sample_rate=Settings.audio_settings.sample_rate,
                    segment_duration=Settings.audio_settings.segment_duration)
 screen_rec = ImageCapture(capture_interval=Settings.video_settings.capture_interval)
@@ -92,7 +91,7 @@ try:
     # Pauses until capture area is defined and user has indicated they are ready to record
     while not screen_rec.have_bounding_box or not InputHandler.final_pressed('v'):
         print("Recording environment not ready (v)")
-        time.sleep(5)
+        time.sleep(10)
 
     docker_thread.start()
     rec_thread.start()

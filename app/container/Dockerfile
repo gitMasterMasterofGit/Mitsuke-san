@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 # Install remaining dependencies
-COPY requirements.txt /app/requirements.txt
+COPY app/container/requirements_container.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy code

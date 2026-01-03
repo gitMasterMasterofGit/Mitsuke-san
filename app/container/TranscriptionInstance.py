@@ -1,4 +1,4 @@
-import sys, json, queue, time, os
+import json, time, os
 import container.AddGlobals
 import warnings
 from pathlib import Path
@@ -7,11 +7,11 @@ from container.Transcribe import Transcriber
 warnings.filterwarnings('ignore')
 container.AddGlobals.add_globals()
 
-print("Konnichiwamasu")
+print("test test test")
 
 OUT_DIR = Path("/jobs/out")
 
-trans = Transcriber(queue.Queue())
+trans = Transcriber()
 
 IN_DIR = Path("/jobs/in")
 idx = 0
