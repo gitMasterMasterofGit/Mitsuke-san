@@ -7,7 +7,7 @@ from container.Transcribe import Transcriber
 warnings.filterwarnings('ignore')
 container.AddGlobals.add_globals()
 
-print("test test test")
+print("MASAKA?????!!!!!!")
 
 OUT_DIR = Path("/jobs/out")
 
@@ -26,7 +26,11 @@ while True:
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(trans.to_json(result), f, ensure_ascii=False)
         idx += 1
+        print(f"Transcription index: {idx}")
     if os.path.exists("/jobs/in/DONE"):
         print("DONE file found, exiting.")
+        with open("/jobs/out/DONE", "w") as f:
+            f.write("DONE\n")
+            f.write(str(idx))
         break
 

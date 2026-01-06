@@ -151,5 +151,5 @@ user_settings.load()
 audio_settings.load()
 video_settings.load()
 #DEBUG
-audio_settings.max_record_length = 120
+audio_settings.max_record_length = 60
 user_settings.deck = "test"

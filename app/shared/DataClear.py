@@ -17,6 +17,8 @@ class FileClear:
     def clear_terminal_files():
         if os.path.exists("app/shared/jobs/in/DONE"):
             os.remove("app/shared/jobs/in/DONE")
+        if os.path.exists("app/shared/jobs/out/DONE"):
+            os.remove("app/shared/jobs/out/DONE")
 
     def clear_flags_and_data():
         if os.path.exists("app/shared/data/transcriber_data.txt"):

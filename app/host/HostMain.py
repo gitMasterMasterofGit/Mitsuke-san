@@ -48,10 +48,17 @@ def call_docker():
         "-v", f"{IN_DIR}:/jobs/in",
         "-v", f"{OUT_DIR}:/jobs/out",
         "-v", f"{container_dir}:/app/container", # debug for easy code updates
-        "mitsuke-backend"
+        "mitsuke-test"
     ]
 
     subprocess.run(cmd, check=True)
+
+def check_transcriptions_finished():
+    global transcription_request_count
+    if os.path.exists(Path(OUT_DIR / "DONE")):
+        with open(Path(OUT_DIR / "DONE"), "r") as f:
+            return int(f.readlines()[1])
+    return transcription_request_count
 
 if os.path.exists("app/shared/flags/audio_ready.txt"):
     os.remove("app/shared/flags/audio_ready.txt")
@@ -100,26 +107,32 @@ try:
     time.sleep(aud_rec.SEGMENT_DURATION + 1) # wait to ensure at least one file has been created
 
     transcription_idx = 0
+    transcription_request_count = 1000 # arbitrary large number to keep requesting transcriptions
 
     while True:
         if InputHandler.final_pressed('q'):
             aud_rec.stopped = True
 
-        if not transcription_idx > aud_rec.audio_file_index:
-            if not os.path.exists(Path(OUT_DIR / f"out_{transcription_idx}.json")):
-                print(f"Could not find transcription out_{transcription_idx}.json, waiting...")
-                time.sleep(5)
-            else:
-                print(f"Processing transcription out_{transcription_idx}.json")
-                fetch_and_parse(
-                    json.load(open(Path(OUT_DIR / f"out_{transcription_idx}.json"), "r", encoding="utf-8"))
-                    , transcription_idx
-                )
-                transcription_idx += 1
-
+        if not os.path.exists(Path(OUT_DIR / f"out_{transcription_idx}.json")):
+            print(f"Could not find transcription out_{transcription_idx}.json, waiting...")
+            time.sleep(5)
         else:
+            print(f"*************\nProcessing transcription out_{transcription_idx}.json\n*************")
+            fetch_and_parse(
+                json.load(open(Path(OUT_DIR / f"out_{transcription_idx}.json"), "r", encoding="utf-8"))
+                , transcription_idx
+            )
+            transcription_idx += 1
+
+        if transcription_idx >= transcription_request_count:
+            print("All transcriptions processed, waiting for process to end...")
+            time.sleep(5)
             FileClear.clear_all(debug=DEBUG)
             break
+        else:
+            print(transcription_idx, transcription_request_count)
+        
+        transcription_request_count = check_transcriptions_finished()
 
 except(KeyboardInterrupt, SystemExit):
     print("Process ended")
