@@ -11,6 +11,8 @@ ffmpeg
 >>[chocolately](https://chocolatey.org/install) (preferred)  
 >>[ffmpeg direct download](https://ffmpeg.org/download.html) (not recommended)  
 
+# CURRENTLY WORKING ON DOCKER IMPLEMENTATION
+### This will greatly simplify the current install process
 
 # Installing ffmpeg with chocolatey
 
