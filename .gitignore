@@ -1,14 +1,25 @@
 .venv/
-__pycahce__/
+__pycache__
+app/__pycahce__
+app/AudioFiles
 AudioFiles
-H_freq_frequency_dict
 Images
+separated
+TranscriptionData
+H_freq_frequency_dict
+app/Images
 jmdict_english
 Test Audio
 Test Transcriptions
 TestPrograms
-TranscriptionData
+app/TranscriptionData
 test.py
 test1.py
 test3.py
 test4.py
+dock.txt
+requirements_full.txt
+freq_gen.py
+venv_activate.txt
+app/shared/data/audio_recorder_data.txt
+app/shared/data/transcriber_data.txt

@@ -1,0 +1,20 @@
+{
+    "settings": [
+        {
+            "type": "user",
+            "deck": "Mistuke-san",
+            "ANKI_MEDIA_FOLDER": "C:/Users/Oorra/AppData/Roaming/Anki2/User 1/collection.media/"
+        },
+        {
+            "type": "audio",
+            "sample_rate": 48000,
+            "segment_duration": 30,
+            "max_record_length": 86400
+        },
+        {
+            "type": "video",
+            "capture_interval": 1,
+            "mem_limit": 30
+        }
+    ]
+}

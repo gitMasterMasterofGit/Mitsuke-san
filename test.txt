@@ -1,0 +1,10 @@
+python - <<EOF
+import queue
+import threading
+from container.Transcribe import Transcriber
+transcription_queue = queue.Queue()
+trans = Transcriber(transcription_queue)
+trans_thread = threading.Thread(target=trans.transcribe_audio)
+print("Starting transcription")
+trans_thread.start()
+EOF
