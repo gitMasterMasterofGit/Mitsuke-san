@@ -3,6 +3,8 @@ Mitsuke-san is a language-learning tool that automates sentence mining for Anki 
 
 It can automatically make cards for new words that contain pictures (if video content is being mined), audio, and sentences (regardless of whether or not the content has subtitles).
 
+There is currently no GUI for this project, everything runs from the command line.
+
 # DEPENDENCIES:
 ### These external programs are requried for Mistuke-san to function  
 [Anki](https://apps.ankiweb.net/)  
